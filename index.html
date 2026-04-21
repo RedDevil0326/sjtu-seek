@@ -1348,8 +1348,339 @@
     <div id="toast" class="toast"></div>
   </div>
 
-  <script type="module" src="./supabaseClient.js"></script>
-  <script type="module" src="./supabaseData.js"></script>
+  <script type="module">
+    import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+
+    const SUPABASE_URL = "https://udajffmaqwirwqwijomg.supabase.co";
+    const SUPABASE_PUBLISHABLE_KEY = "sb_publishable_coEl3FhvsFrrfFC6-uBEqg_kjGHkkVV";
+    const AVATAR_BUCKET = "avatars";
+    const POST_IMAGE_BUCKET = "post-images";
+    const CHAT_FILE_BUCKET = "chat-files";
+
+    const supabase = createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
+      auth: {
+        persistSession: true,
+        autoRefreshToken: true,
+        detectSessionInUrl: true
+      },
+      realtime: {
+        params: { eventsPerSecond: 10 }
+      }
+    });
+
+    async function getCurrentUser() {
+      const { data, error } = await supabase.auth.getUser();
+      if (error) throw error;
+      return data.user;
+    }
+
+    async function getSession() {
+      const { data, error } = await supabase.auth.getSession();
+      if (error) throw error;
+      return data.session;
+    }
+
+    function dataUrlToBlob(dataUrl) {
+      const [meta, base64] = dataUrl.split(",");
+      const mime = (meta.match(/data:(.*?);/) || [])[1] || "application/octet-stream";
+      const binary = atob(base64);
+      const bytes = new Uint8Array(binary.length);
+      for (let i = 0; i < binary.length; i += 1) bytes[i] = binary.charCodeAt(i);
+      return new Blob([bytes], { type: mime });
+    }
+
+    function extFromMime(mime, fallback = "bin") {
+      if (mime.includes("png")) return "png";
+      if (mime.includes("jpeg") || mime.includes("jpg")) return "jpg";
+      if (mime.includes("gif")) return "gif";
+      if (mime.includes("webp")) return "webp";
+      return fallback;
+    }
+
+    async function uploadDataUrl(bucket, path, dataUrl) {
+      if (!dataUrl || !dataUrl.startsWith("data:")) return dataUrl;
+      const blob = dataUrlToBlob(dataUrl);
+      const ext = extFromMime(blob.type);
+      const fullPath = `${path}.${ext}`;
+      const { error } = await supabase.storage.from(bucket).upload(fullPath, blob, {
+        upsert: true,
+        contentType: blob.type
+      });
+      if (error) throw error;
+      const { data } = supabase.storage.from(bucket).getPublicUrl(fullPath);
+      return data.publicUrl;
+    }
+
+    function mapPost(row, currentUserId) {
+      const likes = (row.likes || []).map((item) => item.user_id);
+      const favorites = (row.favorites || []).map((item) => item.user_id);
+      const author = row.profiles;
+      return {
+        id: row.id,
+        authorId: row.author_id,
+        title: row.title,
+        body: row.content,
+        tags: row.tags || [],
+        zone: row.campus || "",
+        images: row.image_urls || [],
+        createdAt: new Date(row.created_at).getTime(),
+        likes,
+        favorites,
+        views: row.view_count || 0,
+        visibility: {
+          type: row.visibility_type || "all",
+          hiddenIds: row.hidden_user_ids || []
+        },
+        _remote: true,
+        _likedByMe: likes.includes(currentUserId),
+        _favoritedByMe: favorites.includes(currentUserId),
+        _authorProfile: author
+      };
+    }
+
+    async function ensureProfile(user, fallback = {}) {
+      if (!user) return null;
+      const profile = {
+        id: user.id,
+        nickname: fallback.name || user.email?.split("@")[0] || "SJTUer",
+        avatar_url: fallback.avatar || null,
+        profile: fallback.profile || {},
+        updated_at: new Date().toISOString()
+      };
+      const { data, error } = await supabase
+        .from("profiles")
+        .upsert(profile, { onConflict: "id" })
+        .select()
+        .single();
+      if (error) throw error;
+      return data;
+    }
+
+    async function updateProfile(userId, payload) {
+      let avatarUrl = payload.avatar_url || null;
+      if (avatarUrl && avatarUrl.startsWith("data:")) {
+        avatarUrl = await uploadDataUrl(AVATAR_BUCKET, `${userId}/avatar-${Date.now()}`, avatarUrl);
+      }
+      const { data, error } = await supabase
+        .from("profiles")
+        .upsert({
+          id: userId,
+          nickname: payload.nickname,
+          avatar_url: avatarUrl,
+          profile: payload.profile || {},
+          updated_at: new Date().toISOString()
+        }, { onConflict: "id" })
+        .select()
+        .single();
+      if (error) throw error;
+      return data;
+    }
+
+    async function listPosts(currentUserId) {
+      const { data, error } = await supabase
+        .from("posts")
+        .select(`
+          *,
+          profiles:author_id(id,nickname,avatar_url,profile),
+          likes(user_id),
+          favorites(user_id)
+        `)
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      return (data || []).map((row) => mapPost(row, currentUserId));
+    }
+
+    async function createPost(currentUserId, post) {
+      const imageUrls = [];
+      for (let i = 0; i < (post.images || []).length; i += 1) {
+        imageUrls.push(await uploadDataUrl(POST_IMAGE_BUCKET, `${currentUserId}/${Date.now()}-${i}`, post.images[i]));
+      }
+      const { data, error } = await supabase
+        .from("posts")
+        .insert({
+          author_id: currentUserId,
+          title: post.title,
+          content: post.body,
+          tags: post.tags || [],
+          campus: post.zone,
+          image_urls: imageUrls,
+          visibility_type: post.visibility?.type || "all",
+          hidden_user_ids: post.visibility?.hiddenIds || []
+        })
+        .select()
+        .single();
+      if (error) throw error;
+      return data;
+    }
+
+    async function updatePost(currentUserId, postId, patch) {
+      const imageUrls = [];
+      for (let i = 0; i < (patch.images || []).length; i += 1) {
+        imageUrls.push(await uploadDataUrl(POST_IMAGE_BUCKET, `${currentUserId}/${postId}-${Date.now()}-${i}`, patch.images[i]));
+      }
+      const { data, error } = await supabase
+        .from("posts")
+        .update({
+          title: patch.title,
+          content: patch.body,
+          tags: patch.tags || [],
+          campus: patch.zone,
+          image_urls: imageUrls,
+          visibility_type: patch.visibility?.type || "all",
+          hidden_user_ids: patch.visibility?.hiddenIds || [],
+          updated_at: new Date().toISOString()
+        })
+        .eq("id", postId)
+        .select()
+        .single();
+      if (error) throw error;
+      return data;
+    }
+
+    async function deletePost(postId) {
+      const { error } = await supabase.from("posts").delete().eq("id", postId);
+      if (error) throw error;
+    }
+
+    async function incrementView(postId) {
+      await supabase.rpc("increment_post_view", { post_id_input: postId });
+    }
+
+    async function setLike(userId, postId, liked) {
+      if (liked) {
+        const { error } = await supabase.from("likes").upsert({ user_id: userId, post_id: postId });
+        if (error) throw error;
+      } else {
+        const { error } = await supabase.from("likes").delete().eq("user_id", userId).eq("post_id", postId);
+        if (error) throw error;
+      }
+    }
+
+    async function setFavorite(userId, postId, favorited) {
+      if (favorited) {
+        const { error } = await supabase.from("favorites").upsert({ user_id: userId, post_id: postId });
+        if (error) throw error;
+      } else {
+        const { error } = await supabase.from("favorites").delete().eq("user_id", userId).eq("post_id", postId);
+        if (error) throw error;
+      }
+    }
+
+    async function getOrCreateConversation(otherUserId, postId = null) {
+      const { data: sessionData } = await supabase.auth.getSession();
+      const currentUserId = sessionData.session?.user?.id;
+      if (!currentUserId) throw new Error("Not signed in");
+      const [a, b] = [currentUserId, otherUserId].sort();
+      const { data: existing, error: findError } = await supabase
+        .from("conversations")
+        .select("*")
+        .eq("participant_a", a)
+        .eq("participant_b", b)
+        .maybeSingle();
+      if (findError) throw findError;
+      if (existing) return existing;
+      const { data, error } = await supabase
+        .from("conversations")
+        .insert({ participant_a: a, participant_b: b, post_id: postId })
+        .select()
+        .single();
+      if (error) throw error;
+      return data;
+    }
+
+    async function listMessages(conversationId) {
+      const { data, error } = await supabase
+        .from("messages")
+        .select("*")
+        .eq("conversation_id", conversationId)
+        .order("created_at", { ascending: true });
+      if (error) throw error;
+      return data || [];
+    }
+
+    async function sendMessage(conversationId, message) {
+      const { data: sessionData } = await supabase.auth.getSession();
+      const senderId = sessionData.session?.user?.id;
+      if (!senderId) throw new Error("Not signed in");
+      let fileUrl = message.data || message.url || null;
+      if (fileUrl && fileUrl.startsWith("data:")) {
+        fileUrl = await uploadDataUrl(CHAT_FILE_BUCKET, `${senderId}/${conversationId}-${Date.now()}`, fileUrl);
+      }
+      const { data, error } = await supabase
+        .from("messages")
+        .insert({
+          conversation_id: conversationId,
+          sender_id: senderId,
+          type: message.type || "text",
+          content: message.text || message.content || null,
+          file_name: message.name || null,
+          file_size: message.size || null,
+          file_url: fileUrl,
+          duration: message.duration || null
+        })
+        .select()
+        .single();
+      if (error) throw error;
+      await supabase
+        .from("conversations")
+        .update({ updated_at: new Date().toISOString() })
+        .eq("id", conversationId);
+      return data;
+    }
+
+    function subscribePosts(callback) {
+      return supabase
+        .channel("public:posts-feed")
+        .on("postgres_changes", { event: "*", schema: "public", table: "posts" }, callback)
+        .on("postgres_changes", { event: "*", schema: "public", table: "likes" }, callback)
+        .on("postgres_changes", { event: "*", schema: "public", table: "favorites" }, callback)
+        .subscribe();
+    }
+
+    function subscribeMessages(conversationId, callback) {
+      return supabase
+        .channel(`messages:${conversationId}`)
+        .on(
+          "postgres_changes",
+          { event: "INSERT", schema: "public", table: "messages", filter: `conversation_id=eq.${conversationId}` },
+          callback
+        )
+        .subscribe();
+    }
+
+    function removeChannel(channel) {
+      if (channel) supabase.removeChannel(channel);
+    }
+
+    window.SJTUSeekSupabase = {
+      client: supabase,
+      isReady: true,
+      url: SUPABASE_URL,
+      getCurrentUser,
+      getSession
+    };
+
+    window.SJTUSeekApi = {
+      ensureProfile,
+      updateProfile,
+      listPosts,
+      createPost,
+      updatePost,
+      deletePost,
+      incrementView,
+      setLike,
+      setFavorite,
+      getOrCreateConversation,
+      listMessages,
+      sendMessage,
+      subscribePosts,
+      subscribeMessages,
+      removeChannel
+    };
+
+    window.dispatchEvent(new CustomEvent("sjtu-seek:supabase-ready"));
+    window.dispatchEvent(new CustomEvent("sjtu-seek:api-ready"));
+  </script>
   <script>
     const KEY = "sjtuSeekSingleAppV1";
     const avatars = [
