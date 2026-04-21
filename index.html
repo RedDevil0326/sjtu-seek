@@ -1,0 +1,2859 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SJTU Seek</title>
+  <style>
+    :root {
+      --red: #b01f2e;
+      --red-2: #d54858;
+      --soft-red: #fae9ec;
+      --ink: #20212a;
+      --muted: #747987;
+      --line: #eceef3;
+      --bg: #fbfbfd;
+      --card: #ffffff;
+      --green: #1d9a72;
+      --shadow: 0 16px 38px rgba(32, 33, 42, .09);
+      --nav-h: 74px;
+    }
+
+    * { box-sizing: border-box; }
+    html { background: #f4f5f8; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      color: var(--ink);
+      background:
+        radial-gradient(circle at top right, rgba(176, 31, 46, .12), transparent 23rem),
+        linear-gradient(180deg, #fff 0%, var(--bg) 100%);
+      font-family: "Microsoft YaHei", "PingFang SC", "Hiragino Sans GB", Arial, sans-serif;
+    }
+
+    button, input, textarea, select { font: inherit; }
+    button { cursor: pointer; }
+    h1, h2, h3, p { margin-top: 0; }
+    img { max-width: 100%; display: block; }
+
+    .phone {
+      width: min(100vw, 520px);
+      min-height: 100vh;
+      margin: 0 auto;
+      background: rgba(255, 255, 255, .76);
+      position: relative;
+      overflow-x: hidden;
+    }
+
+    .screen { display: none; min-height: 100vh; }
+    .screen.active { display: block; }
+
+    .login, .setup {
+      padding: 56px 20px 28px;
+      text-align: center;
+    }
+
+    .auth-switch {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      margin-bottom: 16px;
+      padding: 5px;
+      border-radius: 999px;
+      background: #f3f4f7;
+    }
+
+    .auth-tab {
+      min-height: 38px;
+      border: 0;
+      border-radius: 999px;
+      color: #6d7380;
+      background: transparent;
+      font-weight: 900;
+    }
+
+    .auth-tab.active {
+      color: var(--red);
+      background: #fff;
+      box-shadow: 0 8px 18px rgba(32, 33, 42, .07);
+    }
+
+    .auth-form {
+      display: none;
+      gap: 12px;
+    }
+
+    .auth-form.active {
+      display: grid;
+    }
+
+    .code-row {
+      display: grid;
+      grid-template-columns: 1fr 112px;
+      gap: 8px;
+    }
+
+    .email-field {
+      display: flex;
+      align-items: center;
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      background: #fff;
+      overflow: hidden;
+    }
+
+    .email-field:focus-within {
+      border-color: rgba(176, 31, 46, .45);
+      box-shadow: 0 0 0 4px rgba(176, 31, 46, .09);
+    }
+
+    .email-field input {
+      border: 0;
+      border-radius: 0;
+      box-shadow: none;
+      min-width: 0;
+      height: 42px;
+      padding-right: 12px;
+      flex: 1;
+    }
+
+    .password-field {
+      position: relative;
+    }
+
+    .password-field input {
+      padding-right: 50px;
+    }
+
+    .password-toggle {
+      position: absolute;
+      right: 8px;
+      top: 50%;
+      width: 36px;
+      height: 36px;
+      display: grid;
+      place-items: center;
+      border: 0;
+      border-radius: 50%;
+      transform: translateY(-50%);
+      color: #78808d;
+      background: transparent;
+      cursor: pointer;
+    }
+
+    .password-toggle:hover,
+    .password-toggle.active {
+      color: var(--red);
+      background: var(--soft-red);
+    }
+
+    .email-suffix {
+      display: inline-flex;
+      align-items: center;
+      align-self: stretch;
+      padding: 0 13px;
+      border-left: 1px solid var(--line);
+      color: var(--red);
+      background: #fff7f8;
+      font-size: 12px;
+      font-weight: 900;
+      white-space: nowrap;
+    }
+
+    .captcha-box {
+      height: 48px;
+      display: grid;
+      place-items: center;
+      border-radius: 14px;
+      color: var(--red);
+      background: var(--soft-red);
+      font-weight: 900;
+      letter-spacing: 2px;
+      user-select: none;
+    }
+
+
+    .brand-badge {
+      width: 76px;
+      height: 76px;
+      margin: 0 auto 18px;
+      display: grid;
+      place-items: center;
+      border-radius: 24px;
+      color: #fff;
+      background: linear-gradient(145deg, var(--red), var(--red-2));
+      box-shadow: 0 18px 32px rgba(176, 31, 46, .25);
+      font-size: 34px;
+      font-weight: 900;
+    }
+
+    .eyebrow {
+      color: var(--red);
+      font-size: 12px;
+      font-weight: 900;
+      letter-spacing: 0;
+      margin-bottom: 8px;
+    }
+
+    h1 {
+      margin-bottom: 10px;
+      font-size: clamp(38px, 12vw, 52px);
+      line-height: 1;
+      white-space: nowrap;
+    }
+
+    .subtitle {
+      color: #535862;
+      font-size: 18px;
+      line-height: 1.55;
+      margin: 0 auto 28px;
+      max-width: 17em;
+    }
+
+    .panel, .post-card, .message-item, .detail-sheet, .composer-box, .mine-section {
+      border: 1px solid rgba(236, 238, 243, .94);
+      border-radius: 18px;
+      background: var(--card);
+      box-shadow: var(--shadow);
+    }
+
+    .panel { padding: 18px; text-align: left; }
+
+    .avatar-xl, .avatar-lg, .avatar-md, .avatar-sm {
+      border-radius: 50%;
+      object-fit: cover;
+      background: var(--soft-red);
+      border: 2px solid #fff;
+      box-shadow: 0 8px 18px rgba(32, 33, 42, .08);
+    }
+
+    .avatar-xl { width: 92px; height: 92px; margin: 0 auto 12px; }
+    .avatar-lg { width: 64px; height: 64px; }
+    .avatar-md { width: 44px; height: 44px; }
+    .avatar-sm { width: 34px; height: 34px; }
+
+    .avatar-pick { display: grid; place-items: center; margin-bottom: 12px; }
+    .avatar-grid {
+      display: grid;
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+      gap: 6px;
+      margin: 12px 0 14px;
+    }
+
+    .avatar-option {
+      display: grid;
+      place-items: center;
+      position: relative;
+      border: 0;
+      border-radius: 50%;
+      padding: 0;
+      background: transparent;
+    }
+
+    .avatar-option::after {
+      content: "";
+      position: absolute;
+      inset: -4px;
+      border-radius: 50%;
+      border: 2px solid transparent;
+      transition: .18s ease;
+    }
+
+    .avatar-option.active::after {
+      border-color: var(--red);
+      box-shadow: 0 0 0 4px rgba(176, 31, 46, .1);
+    }
+
+    .avatar-option.active::before {
+      content: "✓";
+      position: absolute;
+      right: -2px;
+      bottom: -2px;
+      z-index: 2;
+      width: 20px;
+      height: 20px;
+      display: grid;
+      place-items: center;
+      border: 2px solid #fff;
+      border-radius: 50%;
+      color: #fff;
+      background: var(--red);
+      font-size: 12px;
+      font-weight: 900;
+    }
+
+    label { display: block; margin: 0 0 8px; font-size: 13px; font-weight: 800; }
+    input, textarea, select {
+      width: 100%;
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      background: #fff;
+      color: var(--ink);
+      outline: none;
+    }
+    input, select { height: 48px; padding: 0 14px; }
+    textarea { min-height: 118px; resize: vertical; padding: 13px 14px; line-height: 1.6; }
+    input:focus, textarea:focus, select:focus {
+      border-color: rgba(176, 31, 46, .45);
+      box-shadow: 0 0 0 4px rgba(176, 31, 46, .09);
+    }
+
+    .primary, .ghost, .chip, .icon-btn, .mini-btn {
+      border: 0;
+      border-radius: 999px;
+      font-weight: 900;
+    }
+    .primary {
+      width: 100%;
+      min-height: 48px;
+      color: #fff;
+      background: var(--red);
+      box-shadow: 0 12px 24px rgba(176, 31, 46, .2);
+    }
+    .ghost {
+      min-height: 40px;
+      color: var(--red);
+      background: var(--soft-red);
+      padding: 0 14px;
+    }
+    .mini-btn {
+      min-height: 38px;
+      padding: 0 12px;
+      border: 1px solid var(--line);
+      background: #fff;
+      color: var(--ink);
+    }
+    .mini-btn.active { color: var(--red); background: var(--soft-red); border-color: rgba(176, 31, 46, .18); }
+    .danger { color: #fff; background: #c4303e; }
+    .logout-btn {
+      color: #c4303e;
+      background: #fff1f2;
+      box-shadow: none;
+    }
+
+    .hidden { display: none !important; }
+    .app { padding-bottom: var(--nav-h); }
+
+    .tab-page { display: none; min-height: calc(100vh - var(--nav-h)); padding: 16px 16px 22px; }
+    .tab-page.active { display: block; }
+
+    .topbar {
+      position: sticky;
+      top: 0;
+      z-index: 20;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin: -16px -16px 14px;
+      padding: 16px;
+      background: rgba(255, 255, 255, .92);
+      backdrop-filter: blur(14px);
+      border-bottom: 1px solid rgba(236, 238, 243, .8);
+    }
+
+    .topbar h2 { margin: 0; font-size: 24px; line-height: 1.15; }
+    .topbar p { margin: 3px 0 0; color: var(--muted); font-size: 13px; }
+    .top-actions { display: flex; gap: 8px; align-items: center; }
+    .icon-btn {
+      width: 44px;
+      height: 44px;
+      display: grid;
+      place-items: center;
+      color: #fff;
+      background: var(--red);
+      font-size: 24px;
+      box-shadow: 0 10px 22px rgba(176, 31, 46, .22);
+    }
+    .search-toggle { background: var(--soft-red); color: var(--red); box-shadow: none; }
+
+    .refresh-tip {
+      height: 0;
+      overflow: hidden;
+      color: var(--red);
+      text-align: center;
+      font-size: 13px;
+      font-weight: 800;
+      transition: height .2s ease;
+    }
+    .refresh-tip.show { height: 30px; }
+
+    .search-panel {
+      display: none;
+      margin-bottom: 12px;
+      padding: 12px;
+      border-radius: 18px;
+      background: #fff;
+      border: 1px solid var(--line);
+    }
+    .search-panel.open { display: block; }
+    .search-line { display: flex; gap: 8px; align-items: center; }
+    .search-line input { height: 42px; }
+    .hot-row, .tag-row, .sort-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin: 10px 0 0;
+    }
+    .chip {
+      padding: 8px 12px;
+      color: #565b66;
+      background: #fff;
+      border: 1px solid var(--line);
+      font-size: 13px;
+    }
+    .chip.active { color: var(--red); background: var(--soft-red); border-color: rgba(176, 31, 46, .18); }
+
+    .sort-row { display: grid; grid-template-columns: 1fr 1fr; margin-bottom: 12px; }
+
+    .post-list { display: grid; gap: 12px; }
+    .post-card {
+      padding: 14px;
+      text-align: left;
+    }
+    .post-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      margin-bottom: 10px;
+    }
+    .author { display: flex; gap: 10px; align-items: center; min-width: 0; }
+    .author strong { display: block; font-size: 14px; }
+    .author span, .meta { color: var(--muted); font-size: 12px; }
+    .post-title { margin: 0 0 7px; font-size: 17px; line-height: 1.38; }
+    .post-body-preview {
+      margin-bottom: 10px;
+      color: #4a4f5a;
+      line-height: 1.6;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+    .thumbs {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 6px;
+      margin-bottom: 10px;
+    }
+    .thumbs img, .detail-images img {
+      width: 100%;
+      aspect-ratio: 1 / 1;
+      border-radius: 12px;
+      object-fit: cover;
+      background: #f3f4f7;
+    }
+    .post-tags { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
+    .tag {
+      border: 0;
+      border-radius: 999px;
+      padding: 5px 9px;
+      color: #626773;
+      background: #f3f4f7;
+      font-size: 12px;
+      font-weight: 800;
+    }
+    .post-actions {
+      display: grid;
+      grid-template-columns: 1fr 44px 44px;
+      gap: 8px;
+      align-items: center;
+    }
+    .stats { display: flex; gap: 10px; color: var(--muted); font-size: 12px; margin-bottom: 10px; }
+
+    .bottom-nav {
+      position: fixed;
+      left: 50%;
+      bottom: 0;
+      z-index: 30;
+      width: min(100vw, 520px);
+      transform: translateX(-50%);
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      min-height: var(--nav-h);
+      padding: 8px 10px max(8px, env(safe-area-inset-bottom));
+      background: rgba(255, 255, 255, .96);
+      border-top: 1px solid var(--line);
+      box-shadow: 0 -10px 26px rgba(32, 33, 42, .08);
+      backdrop-filter: blur(14px);
+    }
+    .app.chat-open .bottom-nav { display: none; }
+    .nav-btn {
+      border: 0;
+      border-radius: 16px;
+      background: transparent;
+      color: #777d88;
+      font-size: 15px;
+      line-height: 1.45;
+      font-weight: 900;
+    }
+    .nav-btn span { display: block; font-size: 20px; line-height: 1.1; }
+    .nav-btn.active { color: var(--red); background: var(--soft-red); }
+
+    .modal {
+      position: fixed;
+      inset: 0;
+      z-index: 60;
+      display: none;
+      background: rgba(24, 25, 32, .34);
+    }
+    .modal.open { display: block; }
+    .sheet {
+      position: absolute;
+      left: 50%;
+      bottom: 0;
+      width: min(100vw, 520px);
+      max-height: 92vh;
+      overflow-y: auto;
+      transform: translateX(-50%);
+      padding: 16px;
+      border-radius: 24px 24px 0 0;
+      background: #fff;
+    }
+    .sheet-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 12px;
+    }
+    .sheet-head h3 { margin: 0; font-size: 20px; }
+    .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .field { margin-bottom: 12px; }
+    .image-preview { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-top: 8px; }
+    .image-preview img { width: 100%; aspect-ratio: 1 / 1; object-fit: cover; border-radius: 12px; }
+    .visibility-box {
+      padding: 12px;
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      background: #fcfcfd;
+    }
+    .radio-row, .contact-check {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      min-height: 36px;
+      color: #454a55;
+      font-size: 14px;
+    }
+    .radio-row input, .contact-check input { width: auto; height: auto; }
+
+    .detail-page, .chat-page {
+      position: absolute;
+      inset: 0;
+      z-index: 55;
+      display: none;
+      width: 100%;
+      min-height: 100%;
+      margin: 0;
+      background: var(--bg);
+      overflow: hidden;
+    }
+    .detail-page.open, .chat-page.open { display: block; }
+    .detail-scroll, .chat-scroll {
+      height: 100vh;
+      max-height: 100%;
+      overflow-y: auto;
+      padding: 72px 16px 18px;
+    }
+    .subbar {
+      position: absolute;
+      inset: 0 0 auto 0;
+      height: 58px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 14px;
+      background: rgba(255,255,255,.94);
+      border-bottom: 1px solid var(--line);
+      backdrop-filter: blur(12px);
+      z-index: 2;
+    }
+    .back {
+      width: 38px;
+      height: 38px;
+      border: 0;
+      border-radius: 50%;
+      color: var(--red);
+      background: var(--soft-red);
+      font-size: 24px;
+      font-weight: 900;
+    }
+    .detail-sheet { padding: 16px; box-shadow: none; }
+    .detail-sheet h2 { margin: 14px 0 10px; font-size: 22px; }
+    .detail-body { line-height: 1.75; color: #3f444e; white-space: pre-wrap; }
+    .detail-images { display: grid; gap: 8px; grid-template-columns: repeat(2, 1fr); margin: 12px 0; }
+    .detail-actions { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-top: 14px; }
+
+    .message-list { display: grid; gap: 10px; }
+    .message-note {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 13px 14px;
+      margin-bottom: 12px;
+      border: 1px solid rgba(176, 31, 46, .1);
+      border-radius: 18px;
+      color: #5d3140;
+      background: linear-gradient(135deg, #fff, #fff3f5);
+      font-size: 13px;
+      line-height: 1.45;
+    }
+    .message-item {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+      padding: 13px;
+      box-shadow: none;
+      position: relative;
+      transition: transform .16s ease, box-shadow .16s ease;
+    }
+    .message-item:active { transform: scale(.99); }
+    .message-item.unread::after {
+      content: "";
+      position: absolute;
+      right: 12px;
+      top: 12px;
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--red);
+    }
+    .message-text { min-width: 0; flex: 1; }
+    .message-text strong { display: block; margin-bottom: 4px; font-size: 15px; }
+    .message-text p { margin: 0; color: var(--muted); font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .message-text p + p { margin-top: 3px; font-size: 12px; color: #969ba6; }
+    .message-time { color: var(--muted); font-size: 12px; }
+
+    .chat-peer {
+      display: grid;
+      line-height: 1.15;
+    }
+    .chat-peer span {
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 500;
+      margin-top: 3px;
+    }
+    .chat-scroll {
+      padding: 84px 18px 136px;
+      background:
+        radial-gradient(circle at top right, rgba(176, 31, 46, .08), transparent 18rem),
+        #f7f8fb;
+    }
+    .chat-day {
+      width: fit-content;
+      margin: 0 auto 14px;
+      padding: 5px 10px;
+      border-radius: 999px;
+      color: #8a8f9b;
+      background: rgba(255,255,255,.8);
+      font-size: 12px;
+      font-weight: 800;
+    }
+    .bubble-row { display: flex; gap: 8px; margin-bottom: 14px; align-items: flex-end; }
+    .bubble-row.me { justify-content: flex-end; }
+    .bubble {
+      max-width: min(78%, 330px);
+      padding: 10px 14px;
+      border-radius: 18px 18px 18px 6px;
+      line-height: 1.55;
+      background: #fff;
+      border: 1px solid var(--line);
+      box-shadow: 0 8px 18px rgba(32, 33, 42, .05);
+    }
+    .bubble-row.me .bubble {
+      color: #fff;
+      background: var(--red);
+      border-color: var(--red);
+      border-radius: 18px 18px 6px 18px;
+    }
+    .bubble.image-bubble,
+    .bubble.file-bubble,
+    .bubble.voice-bubble {
+      color: var(--ink);
+      background: #fff;
+      border-color: var(--line);
+    }
+    .chat-image {
+      width: min(220px, 58vw);
+      max-height: 260px;
+      object-fit: cover;
+      border-radius: 12px;
+    }
+    .file-bubble {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      min-width: 190px;
+    }
+    .file-icon, .voice-icon {
+      width: 36px;
+      height: 36px;
+      display: grid;
+      place-items: center;
+      border-radius: 12px;
+      color: var(--red);
+      background: var(--soft-red);
+      font-weight: 900;
+      flex: 0 0 auto;
+    }
+    .file-meta {
+      min-width: 0;
+    }
+    .file-meta strong,
+    .file-meta span {
+      display: block;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .file-meta span {
+      margin-top: 2px;
+      color: var(--muted);
+      font-size: 12px;
+    }
+    .voice-bubble {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      min-width: 142px;
+    }
+    .chat-input {
+      position: absolute;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      display: grid;
+      gap: 9px;
+      padding: 12px 16px max(14px, env(safe-area-inset-bottom));
+      background: rgba(255,255,255,.96);
+      border-top: 1px solid var(--line);
+      box-shadow: 0 -10px 28px rgba(32,33,42,.07);
+    }
+    .chat-tools {
+      display: grid;
+      grid-template-columns: 42px 42px 42px 1fr 76px;
+      gap: 8px;
+      align-items: center;
+    }
+    .tool-btn {
+      width: 42px;
+      height: 42px;
+      border: 1px solid var(--line);
+      border-radius: 50%;
+      color: var(--red);
+      background: #fff;
+      font-size: 0;
+      font-weight: 900;
+      position: relative;
+    }
+    .tool-btn::before {
+      content: "";
+      display: block;
+      width: 20px;
+      height: 20px;
+      margin: auto;
+      background: currentColor;
+      mask-repeat: no-repeat;
+      mask-position: center;
+      mask-size: contain;
+      -webkit-mask-repeat: no-repeat;
+      -webkit-mask-position: center;
+      -webkit-mask-size: contain;
+    }
+    .tool-btn.image-icon::before {
+      mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='3' y='5' width='18' height='14' rx='2'/%3E%3Ccircle cx='8.5' cy='10' r='1.5'/%3E%3Cpath d='m21 15-5-5L5 19'/%3E%3C/svg%3E");
+      -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='3' y='5' width='18' height='14' rx='2'/%3E%3Ccircle cx='8.5' cy='10' r='1.5'/%3E%3Cpath d='m21 15-5-5L5 19'/%3E%3C/svg%3E");
+    }
+    .tool-btn.file-icon-btn::before {
+      mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M14 2H7a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7z'/%3E%3Cpath d='M14 2v5h5'/%3E%3Cpath d='M9 13h6M9 17h6'/%3E%3C/svg%3E");
+      -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M14 2H7a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7z'/%3E%3Cpath d='M14 2v5h5'/%3E%3Cpath d='M9 13h6M9 17h6'/%3E%3C/svg%3E");
+    }
+    .tool-btn.voice-icon-btn::before {
+      mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12 3a3 3 0 0 0-3 3v6a3 3 0 0 0 6 0V6a3 3 0 0 0-3-3Z'/%3E%3Cpath d='M19 10v2a7 7 0 0 1-14 0v-2'/%3E%3Cpath d='M12 19v3'/%3E%3C/svg%3E");
+      -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12 3a3 3 0 0 0-3 3v6a3 3 0 0 0 6 0V6a3 3 0 0 0-3-3Z'/%3E%3Cpath d='M19 10v2a7 7 0 0 1-14 0v-2'/%3E%3Cpath d='M12 19v3'/%3E%3C/svg%3E");
+    }
+    .tool-btn.voice-icon-btn.recording::before {
+      mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='black'%3E%3Crect x='7' y='7' width='10' height='10' rx='2'/%3E%3C/svg%3E");
+      -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='black'%3E%3Crect x='7' y='7' width='10' height='10' rx='2'/%3E%3C/svg%3E");
+    }
+    .tool-btn.recording {
+      color: #fff;
+      background: var(--red);
+      border-color: var(--red);
+    }
+    .chat-input input {
+      height: 44px;
+      border-radius: 999px;
+      background: #f6f7fa;
+    }
+    .chat-input .primary {
+      min-height: 44px;
+    }
+    .chat-attachment-preview {
+      display: none;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      padding: 8px 10px;
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      background: #fff;
+      color: var(--muted);
+      font-size: 13px;
+    }
+    .chat-attachment-preview.show { display: flex; }
+
+    .profile-card {
+      display: grid;
+      grid-template-columns: 76px minmax(0, 1fr) auto;
+      align-items: start;
+      gap: 12px;
+      padding: 16px;
+      border-radius: 20px;
+      background: linear-gradient(135deg, #fff, #fff7f8);
+      border: 1px solid rgba(176, 31, 46, .1);
+      box-shadow: var(--shadow);
+      margin-bottom: 14px;
+    }
+    .profile-card h3 { margin: 0 0 8px; line-height: 1.2; }
+    .profile-card p { margin: 0; color: var(--muted); font-size: 13px; }
+    .profile-card .ghost {
+      min-height: 38px;
+      padding: 0 14px;
+      align-self: start;
+    }
+    .profile-fields {
+      display: grid;
+      gap: 10px;
+      margin-top: 12px;
+    }
+    .profile-row {
+      display: grid;
+      grid-template-columns: 1fr 98px;
+      gap: 8px;
+      align-items: end;
+    }
+    .profile-row.full {
+      grid-template-columns: 1fr;
+    }
+    .privacy-select {
+      padding: 0 10px;
+      font-size: 13px;
+    }
+    .info-grid {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 7px;
+      margin-top: 8px;
+      min-width: 0;
+    }
+    .info-pill {
+      max-width: 100%;
+      padding: 6px 9px;
+      border-radius: 999px;
+      color: #5f6571;
+      background: #f3f4f7;
+      font-size: 12px;
+      font-weight: 800;
+      line-height: 1.35;
+      overflow-wrap: anywhere;
+    }
+    .profile-card .info-grid { margin-top: 0; }
+    .profile-card .info-pill {
+      border-radius: 12px;
+      padding: 5px 8px;
+    }
+    .profile-summary {
+      display: grid;
+      gap: 8px;
+      min-width: 0;
+    }
+    .profile-summary .info-grid {
+      align-items: flex-start;
+    }
+    .profile-summary .info-pill {
+      flex: 0 1 auto;
+      width: fit-content;
+      max-width: 100%;
+    }
+    .profile-summary .bio-card {
+      width: 100%;
+      margin-top: 0;
+    }
+    .privacy-pill {
+      color: var(--red);
+      background: var(--soft-red);
+    }
+    .bio-card {
+      margin-top: 10px;
+      padding: 11px 12px;
+      border-left: 3px solid var(--red);
+      border-radius: 12px;
+      color: #454a55;
+      background: #fff7f8;
+      font-size: 13px;
+      line-height: 1.65;
+      overflow-wrap: anywhere;
+    }
+    .bio-card.private {
+      color: #7c2532;
+      background: var(--soft-red);
+    }
+    details.mine-section {
+      margin-bottom: 10px;
+      padding: 0;
+      overflow: hidden;
+      box-shadow: none;
+    }
+    details summary {
+      display: grid;
+      grid-template-columns: 1fr auto auto;
+      align-items: center;
+      gap: 10px;
+      list-style: none;
+      padding: 15px;
+      font-weight: 900;
+      cursor: pointer;
+    }
+    details summary::-webkit-details-marker { display: none; }
+    .summary-count {
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 900;
+    }
+    .summary-arrow {
+      width: 28px;
+      height: 28px;
+      display: grid;
+      place-items: center;
+      border-radius: 50%;
+      color: var(--red);
+      background: var(--soft-red);
+      transition: transform .18s ease;
+    }
+    details[open] .summary-arrow {
+      transform: rotate(90deg);
+    }
+    .section-body { padding: 0 12px 12px; display: grid; gap: 10px; }
+    .account-actions {
+      margin-top: 12px;
+      padding: 12px;
+      border-radius: 18px;
+      background: #fff;
+      border: 1px solid var(--line);
+      box-shadow: 0 10px 24px rgba(32,33,42,.05);
+    }
+    .small-card {
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      background: #fff;
+      padding: 12px;
+    }
+    .small-card h4 { margin: 0 0 6px; font-size: 15px; }
+    .small-card p { margin: 0; color: var(--muted); font-size: 13px; line-height: 1.45; }
+
+    .empty {
+      padding: 24px 16px;
+      border: 1px dashed #d9dce4;
+      border-radius: 18px;
+      color: var(--muted);
+      text-align: center;
+      background: #fff;
+    }
+
+    .toast {
+      position: fixed;
+      left: 50%;
+      bottom: 88px;
+      z-index: 90;
+      width: min(calc(100% - 36px), 440px);
+      transform: translate(-50%, 12px);
+      opacity: 0;
+      pointer-events: none;
+      padding: 13px 16px;
+      border-radius: 16px;
+      color: #fff;
+      background: rgba(32, 33, 42, .93);
+      box-shadow: 0 14px 30px rgba(0, 0, 0, .18);
+      transition: .22s ease;
+    }
+    .toast.show { opacity: 1; transform: translate(-50%, 0); }
+    .motto {
+      position: fixed;
+      right: max(12px, calc((100vw - 520px) / 2 + 12px));
+      bottom: 88px;
+      z-index: 25;
+      padding: 8px 11px;
+      border-radius: 999px;
+      border: 1px solid rgba(176,31,46,.16);
+      color: var(--red);
+      background: rgba(255,255,255,.9);
+      font-size: 12px;
+      font-weight: 900;
+    }
+
+    @media (min-width: 720px) {
+      body { padding: 28px 0; }
+      .phone {
+        min-height: calc(100vh - 56px);
+        border: 1px solid var(--line);
+        border-radius: 28px;
+        box-shadow: 0 24px 70px rgba(31,34,44,.1);
+        overflow: hidden;
+      }
+      .bottom-nav, .detail-page, .chat-page { border-radius: 0 0 28px 28px; }
+      .detail-page, .chat-page { height: 100%; top: 0; bottom: 0; }
+      .detail-scroll, .chat-scroll { height: 100%; }
+      .sheet { border-radius: 24px; bottom: 28px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="phone">
+    <section id="loginScreen" class="screen login">
+      <div class="brand-badge">思</div>
+      <p class="eyebrow">SJTU SEEK ACCOUNT</p>
+      <h1>SJTU Seek</h1>
+      <p class="subtitle">使用交大邮箱登录，让每一个需求都找到恰好的回应</p>
+
+      <div class="panel">
+        <div class="auth-switch">
+          <button class="auth-tab active" data-auth-tab="login">登录</button>
+          <button class="auth-tab" data-auth-tab="register">注册</button>
+        </div>
+
+        <div id="loginForm" class="auth-form active">
+          <div>
+            <label for="loginEmail">交大邮箱</label>
+            <div class="email-field">
+              <input id="loginEmail" type="text" placeholder="name" autocomplete="username" />
+              <span class="email-suffix">@sjtu.edu.cn</span>
+            </div>
+          </div>
+          <div>
+            <label for="loginPassword">密码</label>
+            <div class="password-field">
+              <input id="loginPassword" type="password" placeholder="请输入密码" autocomplete="current-password" />
+              <button class="password-toggle" type="button" data-password-target="loginPassword" aria-label="显示密码">◉</button>
+            </div>
+          </div>
+          <button class="primary" id="loginBtn">登录</button>
+          <button class="ghost" id="forgotPasswordBtn">忘记密码</button>
+        </div>
+
+        <div id="registerForm" class="auth-form">
+          <div>
+            <label for="registerEmail">交大邮箱</label>
+            <div class="email-field">
+              <input id="registerEmail" type="text" placeholder="name" autocomplete="username" />
+              <span class="email-suffix">@sjtu.edu.cn</span>
+            </div>
+          </div>
+          <div>
+            <label for="registerPassword">设置密码</label>
+            <div class="password-field">
+              <input id="registerPassword" type="password" placeholder="至少 10 位，含大小写字母和数字" autocomplete="new-password" />
+              <button class="password-toggle" type="button" data-password-target="registerPassword" aria-label="显示密码">◉</button>
+            </div>
+          </div>
+          <div>
+            <label for="registerPasswordConfirm">确认密码</label>
+            <div class="password-field">
+              <input id="registerPasswordConfirm" type="password" placeholder="请再次输入密码" autocomplete="new-password" />
+              <button class="password-toggle" type="button" data-password-target="registerPasswordConfirm" aria-label="显示密码">◉</button>
+            </div>
+          </div>
+          <div>
+            <label for="emailCodeInput">邮箱验证码</label>
+            <div class="code-row">
+              <input id="emailCodeInput" type="text" inputmode="numeric" maxlength="8" placeholder="输入交大邮箱收到的验证码" />
+              <button class="ghost" id="sendEmailCodeBtn">发送验证码</button>
+            </div>
+          </div>
+          <div>
+            <label for="captchaInput">独立验证码</label>
+            <div class="code-row">
+              <input id="captchaInput" type="text" placeholder="输入右侧验证码" />
+              <div class="captcha-box" id="captchaBox" title="点击刷新验证码"></div>
+            </div>
+          </div>
+          <button class="primary" id="registerBtn">验证并注册</button>
+        </div>
+      </div>
+    </section>
+
+    <section id="setupScreen" class="screen setup">
+      <div class="brand-badge">思</div>
+      <p class="eyebrow">SJTU CAMPUS HELP</p>
+      <h1>SJTU Seek</h1>
+      <p class="subtitle">让每一个需求，都找到恰好的回应</p>
+
+      <div class="panel">
+        <div class="avatar-pick">
+          <img id="setupAvatarPreview" class="avatar-xl" alt="头像预览" />
+          <button class="ghost" id="setupUploadBtn">从相册选择头像</button>
+          <input id="setupAvatarInput" class="hidden" type="file" accept="image/*" />
+        </div>
+        <label>默认头像</label>
+        <div class="avatar-grid" id="setupAvatarGrid"></div>
+        <label for="setupName">昵称</label>
+        <input id="setupName" type="text" placeholder="例如：闵行小帮手" />
+        <button class="primary" id="finishSetupBtn" style="margin-top:14px;">进入广场</button>
+      </div>
+    </section>
+
+    <section id="appScreen" class="screen app">
+      <div id="refreshTip" class="refresh-tip">正在刷新...</div>
+
+      <section id="messagesPage" class="tab-page">
+        <header class="topbar">
+          <div>
+            <h2>信息</h2>
+            <p>会话按最近联系排序</p>
+          </div>
+        </header>
+        <div id="messageList" class="message-list"></div>
+      </section>
+
+      <section id="plazaPage" class="tab-page active">
+        <header class="topbar">
+          <div>
+            <p class="eyebrow">SJTU Seek</p>
+            <h2>广场</h2>
+            <p>让每一个需求，都找到恰好的回应</p>
+          </div>
+          <div class="top-actions">
+            <button class="icon-btn search-toggle" id="searchToggle" aria-label="搜索">⌕</button>
+            <button class="icon-btn" id="openComposer" aria-label="发布需求">+</button>
+          </div>
+        </header>
+
+        <div id="searchPanel" class="search-panel">
+          <div class="search-line">
+            <input id="searchInput" type="search" placeholder="搜索标题、正文或 tag" />
+            <button class="ghost" id="clearSearch">清空</button>
+          </div>
+          <div class="hot-row" id="hotSearches"></div>
+        </div>
+
+        <div class="tag-row" id="tagFilters">
+          <button class="chip active" data-tag="全部">全部</button>
+          <button class="chip" data-tag="搭子">搭子</button>
+          <button class="chip" data-tag="组队">组队</button>
+          <button class="chip" data-tag="二手">二手</button>
+          <button class="chip" data-tag="求助">求助</button>
+        </div>
+
+        <div class="sort-row">
+          <select id="sortSelect">
+            <option value="latest">最新发布</option>
+            <option value="hot">热度降序</option>
+          </select>
+          <select id="zoneSelect">
+            <option value="全部">全部</option>
+          </select>
+        </div>
+
+        <div id="postList" class="post-list"></div>
+      </section>
+
+      <section id="minePage" class="tab-page">
+        <header class="topbar">
+          <div>
+            <h2>我的</h2>
+            <p>资料、记录和收藏都在这里</p>
+          </div>
+        </header>
+        <div class="profile-card">
+          <img id="mineAvatar" class="avatar-lg" alt="我的头像" />
+          <div style="min-width:0;">
+            <h3 id="mineName"></h3>
+            <div id="mineInfo" class="profile-summary"></div>
+          </div>
+          <button class="ghost" id="editProfileBtn">编辑</button>
+        </div>
+        <div id="mineSections"></div>
+      </section>
+
+      <nav class="bottom-nav">
+        <button class="nav-btn" data-tab="messages"><span>✉</span>信息</button>
+        <button class="nav-btn active" data-tab="plaza"><span>⌂</span>广场</button>
+        <button class="nav-btn" data-tab="mine"><span>☻</span>我的</button>
+      </nav>
+    </section>
+
+    <div id="composerModal" class="modal" aria-hidden="true">
+      <div class="sheet">
+        <div class="sheet-head">
+          <h3 id="composerTitle">发布需求</h3>
+          <button class="ghost" id="closeComposer">关闭</button>
+        </div>
+        <div class="field">
+          <label for="postTitle">标题</label>
+          <input id="postTitle" type="text" placeholder="例如：周五晚游泳搭子" />
+        </div>
+        <div class="field">
+          <label for="postBody">正文内容</label>
+          <textarea id="postBody" placeholder="例如：找个周五晚上一起游泳的搭子 / 求组队参加数学建模 / 出二手电动车..."></textarea>
+        </div>
+        <div class="form-grid">
+          <div class="field">
+            <label for="postTags">标签</label>
+            <input id="postTags" type="text" placeholder="#搭子 #游泳" />
+          </div>
+          <div class="field">
+            <label for="postZone">校区</label>
+            <select id="postZone"></select>
+          </div>
+        </div>
+        <div class="field">
+          <label>配图</label>
+          <button class="ghost" id="pickPostImages">添加图片</button>
+          <input id="postImagesInput" class="hidden" type="file" accept="image/*" multiple />
+          <div id="postImagePreview" class="image-preview"></div>
+        </div>
+        <div class="field visibility-box">
+          <label>可见范围</label>
+          <label class="radio-row"><input type="radio" name="visibility" value="all" checked /> 所有人可见</label>
+          <label class="radio-row"><input type="radio" name="visibility" value="self" /> 仅自己可见</label>
+          <label class="radio-row"><input type="radio" name="visibility" value="hide" /> 选择不可见</label>
+          <div id="hiddenContactList" class="hidden"></div>
+        </div>
+        <button class="primary" id="publishPostBtn">发布</button>
+      </div>
+    </div>
+
+    <div id="profileModal" class="modal" aria-hidden="true">
+      <div class="sheet">
+        <div class="sheet-head">
+          <h3>个人资料</h3>
+          <button class="ghost" id="closeProfile">关闭</button>
+        </div>
+        <div class="avatar-pick">
+          <img id="profileAvatarPreview" class="avatar-xl" alt="头像预览" />
+          <button class="ghost" id="profileUploadBtn">重新选择头像</button>
+          <input id="profileAvatarInput" class="hidden" type="file" accept="image/*" />
+        </div>
+        <label>默认头像</label>
+        <div class="avatar-grid" id="profileAvatarGrid"></div>
+        <label for="profileName">昵称</label>
+        <input id="profileName" type="text" />
+        <div class="profile-fields">
+          <div class="profile-row">
+            <div>
+              <label for="profileGender">性别</label>
+              <select id="profileGender">
+                <option value="">不填写</option>
+                <option value="男">男</option>
+                <option value="女">女</option>
+                <option value="其他">其他</option>
+              </select>
+            </div>
+            <select id="privacyGender" class="privacy-select" aria-label="性别隐私">
+              <option value="public">公开</option>
+              <option value="private">隐私</option>
+            </select>
+          </div>
+          <div class="profile-row">
+            <div>
+              <label for="profileAge">年龄</label>
+              <input id="profileAge" type="number" min="15" max="80" value="20" placeholder="例如：20" />
+            </div>
+            <select id="privacyAge" class="privacy-select" aria-label="年龄隐私">
+              <option value="public">公开</option>
+              <option value="private">隐私</option>
+            </select>
+          </div>
+          <div class="profile-row">
+            <div>
+              <label for="profileGrade">年级</label>
+              <select id="profileGrade"></select>
+            </div>
+            <select id="privacyGrade" class="privacy-select" aria-label="年级隐私">
+              <option value="public">公开</option>
+              <option value="private">隐私</option>
+            </select>
+          </div>
+          <div class="profile-row">
+            <div>
+              <label for="profileCollege">学院</label>
+              <select id="profileCollege"></select>
+            </div>
+            <select id="privacyCollege" class="privacy-select" aria-label="学院隐私">
+              <option value="public">公开</option>
+              <option value="private">隐私</option>
+            </select>
+          </div>
+          <div class="profile-row">
+            <div>
+              <label for="profileHobbies">爱好</label>
+              <input id="profileHobbies" type="text" placeholder="例如：游泳、摄影、羽毛球" />
+            </div>
+            <select id="privacyHobbies" class="privacy-select" aria-label="爱好隐私">
+              <option value="public">公开</option>
+              <option value="private">隐私</option>
+            </select>
+          </div>
+          <div class="profile-row full">
+            <div>
+              <label for="profileBio">个人简介</label>
+              <textarea id="profileBio" placeholder="写一句让别人更了解你的话"></textarea>
+            </div>
+            <select id="privacyBio" class="privacy-select" aria-label="个人简介隐私">
+              <option value="public">公开</option>
+              <option value="private">隐私</option>
+            </select>
+          </div>
+        </div>
+        <button class="primary" id="saveProfileBtn" style="margin-top:14px;">保存资料</button>
+      </div>
+    </div>
+
+    <section id="detailPage" class="detail-page">
+      <div class="subbar">
+        <button class="back" id="closeDetail">‹</button>
+        <strong>帖子详情</strong>
+      </div>
+      <div id="detailContent" class="detail-scroll"></div>
+    </section>
+
+    <section id="chatPage" class="chat-page">
+      <div class="subbar">
+        <button class="back" id="closeChat">‹</button>
+        <img id="chatAvatar" class="avatar-sm" alt="对方头像" />
+        <div class="chat-peer">
+          <strong id="chatName"></strong>
+          <span id="chatSubtitle">校园互助私信</span>
+        </div>
+      </div>
+      <div id="chatMessages" class="chat-scroll"></div>
+      <div class="chat-input">
+        <div id="chatAttachmentPreview" class="chat-attachment-preview"></div>
+        <div class="chat-tools">
+          <button class="tool-btn image-icon" id="pickChatImage" title="发送图片" aria-label="发送图片"></button>
+          <button class="tool-btn file-icon-btn" id="pickChatFile" title="发送文件" aria-label="发送文件"></button>
+          <button class="tool-btn voice-icon-btn" id="recordVoiceBtn" title="发送语音" aria-label="发送语音"></button>
+          <input id="chatInput" type="text" placeholder="发送一条消息" />
+          <button class="primary" id="sendChatBtn">发送</button>
+        </div>
+        <input id="chatImageInput" class="hidden" type="file" accept="image/*" />
+        <input id="chatFileInput" class="hidden" type="file" />
+      </div>
+    </section>
+
+    <span class="motto" title="饮水思源，爱国荣校">饮水思源</span>
+    <div id="toast" class="toast"></div>
+  </div>
+
+  <script type="module" src="./supabaseClient.js"></script>
+  <script type="module" src="./supabaseData.js"></script>
+  <script>
+    const KEY = "sjtuSeekSingleAppV1";
+    const avatars = [
+      sjtuAvatar("#b01f2e", "校徽", "seal"),
+      sjtuAvatar("#9b1b30", "齿轮", "gear"),
+      sjtuAvatar("#3657c8", "链条", "chain"),
+      sjtuAvatar("#1d9a72", "书籍", "book"),
+      sjtuAvatar("#cf7b22", "1896", "year")
+    ];
+    const EMAIL_SUFFIX = "@sjtu.edu.cn";
+    const CAMPUSES = ["闵行校区", "徐汇校区", "黄浦校区", "长宁校区", "七宝校区", "浦东校区", "崇明校区"];
+    const GRADES = ["大一", "大二", "大三", "大四", "研一", "研二", "研三", "博一", "博二", "博三", "博四", "博五", "博士后", "教职工", "其他"];
+    const COLLEGES = [
+      "船舶海洋与建筑工程学院", "机械与动力工程学院", "电子信息与电气工程学院", "电气工程学院", "自动化与感知学院",
+      "计算机学院（网络空间安全学院、密码学院）", "集成电路学院（信息与电子工程学院）", "材料科学与工程学院", "环境科学与工程学院", "生物医学工程学院", "航空航天学院",
+      "数学科学学院", "物理与天文学院", "化学化工学院", "海洋学院",
+      "生命科学技术学院", "农业与生物学院", "医学院", "药学院",
+      "安泰经济与管理学院", "凯原法学院", "外国语学院", "人文学院", "马克思主义学院", "国际与公共事务学院", "媒体与传播学院", "设计学院", "体育系", "上海高级金融学院",
+      "浦江国际学院", "巴黎卓越工程师学院", "上海交大-南加州大学文化创意产业学院", "中欧国际工商学院", "中英国际低碳学院",
+      "致远学院", "教育学院", "智慧能源创新学院", "溥渊未来技术学院", "人工智能学院", "心理学院",
+      "系统生物医学研究院", "自然科学研究院", "海洋研究院", "李政道研究所", "中国法与社会研究院", "变革性分子前沿科学中心", "张江高等研究院",
+      "能源研究院", "空天科学技术研究院", "汽车工程研究院", "航空发动机研究院", "燃气轮机研究院", "上海智能制造研究院", "医疗机器人研究院", "医学影像先进技术研究院", "人工智能研究院", "三亚崖州湾深海科技研究院", "元知机器人研究院",
+      "Bio-X研究院", "Med-X研究院", "转化医学研究院", "个性化医学研究院", "董浩云智能管理与物流研究院（中美物流研究院）", "新农村发展研究院", "碳中和发展研究院", "区域国别研究院"
+    ];
+
+    const $ = (selector) => document.querySelector(selector);
+    const $$ = (selector) => Array.from(document.querySelectorAll(selector));
+
+    let state = loadState();
+    let activeTab = "plaza";
+    let activeTag = "全部";
+    let composerImages = [];
+    let editingPostId = null;
+    let activeChatUserId = null;
+    let activeRemoteConversationId = null;
+    let messagesRealtimeChannel = null;
+    let pendingChatAttachment = null;
+    let voiceRecordingStartedAt = 0;
+    let postsRealtimeChannel = null;
+    let toastTimer;
+
+    const dom = {
+      loginScreen: $("#loginScreen"),
+      loginEmail: $("#loginEmail"),
+      loginPassword: $("#loginPassword"),
+      loginBtn: $("#loginBtn"),
+      forgotPasswordBtn: $("#forgotPasswordBtn"),
+      registerEmail: $("#registerEmail"),
+      registerPassword: $("#registerPassword"),
+      registerPasswordConfirm: $("#registerPasswordConfirm"),
+      emailCodeInput: $("#emailCodeInput"),
+      sendEmailCodeBtn: $("#sendEmailCodeBtn"),
+      captchaInput: $("#captchaInput"),
+      captchaBox: $("#captchaBox"),
+      registerBtn: $("#registerBtn"),
+      loginForm: $("#loginForm"),
+      registerForm: $("#registerForm"),
+      setupScreen: $("#setupScreen"),
+      appScreen: $("#appScreen"),
+      setupAvatarPreview: $("#setupAvatarPreview"),
+      setupAvatarInput: $("#setupAvatarInput"),
+      setupAvatarGrid: $("#setupAvatarGrid"),
+      setupName: $("#setupName"),
+      finishSetupBtn: $("#finishSetupBtn"),
+      setupUploadBtn: $("#setupUploadBtn"),
+      searchToggle: $("#searchToggle"),
+      searchPanel: $("#searchPanel"),
+      searchInput: $("#searchInput"),
+      clearSearch: $("#clearSearch"),
+      hotSearches: $("#hotSearches"),
+      tagFilters: $("#tagFilters"),
+      sortSelect: $("#sortSelect"),
+      zoneSelect: $("#zoneSelect"),
+      postList: $("#postList"),
+      composerModal: $("#composerModal"),
+      openComposer: $("#openComposer"),
+      closeComposer: $("#closeComposer"),
+      postTitle: $("#postTitle"),
+      postBody: $("#postBody"),
+      postTags: $("#postTags"),
+      postZone: $("#postZone"),
+      pickPostImages: $("#pickPostImages"),
+      postImagesInput: $("#postImagesInput"),
+      postImagePreview: $("#postImagePreview"),
+      hiddenContactList: $("#hiddenContactList"),
+      publishPostBtn: $("#publishPostBtn"),
+      detailPage: $("#detailPage"),
+      detailContent: $("#detailContent"),
+      closeDetail: $("#closeDetail"),
+      messageList: $("#messageList"),
+      chatPage: $("#chatPage"),
+      closeChat: $("#closeChat"),
+      chatAvatar: $("#chatAvatar"),
+      chatName: $("#chatName"),
+      chatMessages: $("#chatMessages"),
+      chatInput: $("#chatInput"),
+      sendChatBtn: $("#sendChatBtn"),
+      pickChatImage: $("#pickChatImage"),
+      pickChatFile: $("#pickChatFile"),
+      recordVoiceBtn: $("#recordVoiceBtn"),
+      chatImageInput: $("#chatImageInput"),
+      chatFileInput: $("#chatFileInput"),
+      chatAttachmentPreview: $("#chatAttachmentPreview"),
+      mineAvatar: $("#mineAvatar"),
+      mineName: $("#mineName"),
+      mineInfo: $("#mineInfo"),
+      mineSections: $("#mineSections"),
+      editProfileBtn: $("#editProfileBtn"),
+      profileModal: $("#profileModal"),
+      closeProfile: $("#closeProfile"),
+      profileAvatarPreview: $("#profileAvatarPreview"),
+      profileUploadBtn: $("#profileUploadBtn"),
+      profileAvatarInput: $("#profileAvatarInput"),
+      profileAvatarGrid: $("#profileAvatarGrid"),
+      profileName: $("#profileName"),
+      profileGender: $("#profileGender"),
+      profileAge: $("#profileAge"),
+      profileGrade: $("#profileGrade"),
+      profileCollege: $("#profileCollege"),
+      profileHobbies: $("#profileHobbies"),
+      profileBio: $("#profileBio"),
+      privacyGender: $("#privacyGender"),
+      privacyAge: $("#privacyAge"),
+      privacyGrade: $("#privacyGrade"),
+      privacyCollege: $("#privacyCollege"),
+      privacyHobbies: $("#privacyHobbies"),
+      privacyBio: $("#privacyBio"),
+      saveProfileBtn: $("#saveProfileBtn"),
+      chatSubtitle: $("#chatSubtitle"),
+      refreshTip: $("#refreshTip"),
+      toast: $("#toast")
+    };
+
+    function sjtuAvatar(color, text, icon) {
+      const icons = {
+        seal: `<circle cx="90" cy="83" r="44" fill="none" stroke="white" stroke-width="8"/><path d="M63 103h54M71 103V73h38v30M79 73V60h22v13" fill="none" stroke="white" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/><path d="M67 118h46" stroke="white" stroke-width="7" stroke-linecap="round"/><circle cx="90" cy="83" r="14" fill="white"/><path d="M90 70v26M77 83h26" stroke="${color}" stroke-width="5" stroke-linecap="round"/>`,
+        gear: `<g fill="none" stroke="white" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"><circle cx="90" cy="86" r="24"/><path d="M90 43v14M90 115v14M47 86h14M119 86h14M59 55l10 10M121 55l-10 10M59 117l10-10M121 117l-10-10"/></g><circle cx="90" cy="86" r="9" fill="white"/>`,
+        chain: `<g fill="none" stroke="white" stroke-width="10" stroke-linecap="round"><path d="M78 70 64 84c-10 10-10 25 0 35s25 10 35 0l12-12"/><path d="M102 102l14-14c10-10 10-25 0-35s-25-10-35 0L69 65"/><path d="M78 102h24"/></g>`,
+        book: `<path d="M47 58h37c12 0 18 7 18 18v54c-5-6-12-9-21-9H47zM133 58H96c-12 0-18 7-18 18v54c5-6 12-9 21-9h34z" fill="white" opacity=".96"/><path d="M90 72v49" stroke="${color}" stroke-width="5" stroke-linecap="round"/>`,
+        year: `<text x="90" y="99" text-anchor="middle" font-size="40" font-family="Arial, sans-serif" font-weight="900" fill="white">1896</text><path d="M52 116h76" stroke="white" stroke-width="8" stroke-linecap="round"/><path d="M64 56h52" stroke="white" stroke-width="8" stroke-linecap="round" opacity=".9"/>`
+      };
+      const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="180" height="180" viewBox="0 0 180 180"><rect width="180" height="180" rx="60" fill="${color}"/><circle cx="135" cy="42" r="24" fill="rgba(255,255,255,.18)"/>${icons[icon]}<text x="90" y="152" text-anchor="middle" font-size="${text === "1896" ? 24 : 22}" font-family="Arial, sans-serif" font-weight="800" fill="white">${text}</text></svg>`;
+      return "data:image/svg+xml;charset=utf-8," + encodeURIComponent(svg);
+    }
+
+    function defaultProfile() {
+      return {
+        gender: "",
+        age: "",
+        grade: "",
+        college: "",
+        hobbies: "",
+        bio: "",
+        privacy: {
+          gender: "public",
+          age: "private",
+          grade: "public",
+          college: "public",
+          hobbies: "public",
+          bio: "public"
+        }
+      };
+    }
+
+    function normalizeUser(user) {
+      return {
+        ...user,
+        profile: {
+          ...defaultProfile(),
+          ...(user.profile || {}),
+          privacy: {
+            ...defaultProfile().privacy,
+            ...((user.profile && user.profile.privacy) || {})
+          }
+        }
+      };
+    }
+
+    function freshState() {
+      const now = Date.now();
+      const users = [
+        { id: "me", name: "", avatar: avatars[0], profileReady: false, profile: defaultProfile() },
+        { id: "u-lin", name: "林同学", avatar: avatars[1], profile: { ...defaultProfile(), gender: "女", college: "船建学院", hobbies: "游泳、夜跑", bio: "喜欢把需求回应得刚刚好。" } },
+        { id: "u-chen", name: "陈同学", avatar: avatars[2], profile: { ...defaultProfile(), gender: "男", college: "电子信息与电气工程学院", hobbies: "建模、可视化", bio: "校赛队友招募中。" } },
+        { id: "u-xu", name: "许同学", avatar: avatars[3], profile: { ...defaultProfile(), college: "安泰经管学院", hobbies: "骑行、二手好物", bio: "闵行校区面交友好。" } },
+        { id: "u-tang", name: "唐同学", avatar: avatars[4], profile: { ...defaultProfile(), college: "设计学院", hobbies: "摄影、展览", bio: "有事可以私信。" } }
+      ];
+      return {
+        auth: {
+          loggedIn: false,
+          currentEmail: "",
+          captcha: ""
+        },
+        currentUser: "me",
+        users,
+        posts: [
+          {
+            id: "p1", authorId: "u-lin", title: "周五晚找游泳搭子",
+            body: "周五晚上想找一位一起去霍英东游泳馆的搭子，水平一般也可以。希望 19:30 左右出发，结束后可以一起吃点东西。",
+            tags: ["搭子", "游泳"], zone: "闵行校区", images: [], createdAt: now - 5 * 60000,
+            likes: ["u-chen", "u-xu"], favorites: [], views: 26, visibility: { type: "all", hiddenIds: [] }
+          },
+          {
+            id: "p2", authorId: "u-chen", title: "数学建模校赛缺一名队友",
+            body: "队伍目前两人，想找一位负责论文排版、可视化或者算法实现的同学。目标是认真完成，也希望过程轻松一点。",
+            tags: ["组队", "数学建模"], zone: "徐汇校区", images: [], createdAt: now - 28 * 60000,
+            likes: ["u-lin", "u-tang", "u-xu"], favorites: [], views: 41, visibility: { type: "all", hiddenIds: [] }
+          },
+          {
+            id: "p3", authorId: "u-xu", title: "出二手电动车",
+            body: "九成新，带头盔和锁，闵行校区可看车。适合跨校区通勤，价格可小刀。",
+            tags: ["二手", "电动车"], zone: "闵行校区", images: [], createdAt: now - 2 * 3600000,
+            likes: ["u-lin"], favorites: [], views: 18, visibility: { type: "all", hiddenIds: [] }
+          }
+        ],
+        chats: [
+          { id: "c-u-lin", participants: ["me", "u-lin"], updatedAt: now - 15 * 60000, messages: [
+            { from: "u-lin", text: "你好，需要帮忙的话可以直接说。", at: now - 15 * 60000 }
+          ]},
+          { id: "c-u-chen", participants: ["me", "u-chen"], updatedAt: now - 50 * 60000, messages: [
+            { from: "me", text: "数学建模还缺人吗？", at: now - 52 * 60000 },
+            { from: "u-chen", text: "还缺一位，欢迎聊聊。", at: now - 50 * 60000 }
+          ]}
+        ],
+        history: [],
+        searchStats: { "数学建模": 3, "游泳": 2, "电动车": 1 }
+      };
+    }
+
+    function loadState() {
+      try {
+        const saved = JSON.parse(localStorage.getItem(KEY));
+        return saved ? mergeState(saved) : freshState();
+      } catch {
+        return freshState();
+      }
+    }
+
+    function mergeState(saved) {
+      const base = freshState();
+      const merged = { ...base, ...saved };
+      const baseUsers = Object.fromEntries(base.users.map(user => [user.id, user]));
+      merged.users = (merged.users || base.users).map(user => {
+        const normalized = normalizeUser(user);
+        if (normalized.id !== merged.currentUser && baseUsers[normalized.id]) {
+          normalized.avatar = baseUsers[normalized.id].avatar;
+          normalized.profile = { ...baseUsers[normalized.id].profile, ...(normalized.profile || {}) };
+        }
+        return normalized;
+      });
+      merged.posts = merged.posts || base.posts;
+      merged.chats = merged.chats || base.chats;
+      merged.history = merged.history || [];
+      merged.searchStats = merged.searchStats || base.searchStats;
+      merged.auth = { ...base.auth, ...(merged.auth || {}) };
+      merged.posts = merged.posts.map(post => ({ ...post, zone: normalizeCampus(post.zone) }));
+      return merged;
+    }
+
+    function save() {
+      localStorage.setItem(KEY, JSON.stringify(state));
+    }
+
+    function me() { return state.users.find(u => u.id === state.currentUser); }
+    function userById(id) { return state.users.find(u => u.id === id) || state.users[1]; }
+    function contacts() { return state.users.filter(u => u.id !== state.currentUser); }
+
+    function normalizeCampus(zone) {
+      const map = { "东区": "闵行校区", "西区": "徐汇校区", "东区生活区": "闵行校区", "西区生活区": "徐汇校区" };
+      return map[zone] || zone || "闵行校区";
+    }
+
+    function fillSelect(select, options, firstLabel = "") {
+      const first = firstLabel ? `<option value="">${firstLabel}</option>` : "";
+      select.innerHTML = first + options.map(option => `<option value="${escapeHtml(option)}">${escapeHtml(option)}</option>`).join("");
+    }
+
+    function validSjtuEmail(email) {
+      return email.trim().toLowerCase().endsWith(EMAIL_SUFFIX);
+    }
+
+    function emailFromPrefix(input) {
+      const prefix = input.trim().toLowerCase();
+      if (!prefix) return { error: "请输入邮箱前缀。" };
+      if (prefix.includes("@")) return { error: "这里只需要填写 @sjtu.edu.cn 前面的部分。" };
+      if (!/^[a-z0-9._%+-]+$/.test(prefix)) return { error: "邮箱前缀只能包含字母、数字、点、下划线、百分号、加号或短横线。" };
+      if (/^[._%+-]|[._%+-]$/.test(prefix)) return { error: "邮箱前缀不能以符号开头或结尾。" };
+      return { email: prefix + EMAIL_SUFFIX };
+    }
+
+    function makeCaptcha() {
+      const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+      return Array.from({ length: 4 }, () => chars[Math.floor(Math.random() * chars.length)]).join("");
+    }
+
+    function refreshCaptcha() {
+      state.auth.captcha = makeCaptcha();
+      if (dom.captchaBox) dom.captchaBox.textContent = state.auth.captcha;
+      save();
+    }
+
+    function validateRegisterPassword() {
+      const password = dom.registerPassword.value;
+      const confirmPassword = dom.registerPasswordConfirm.value;
+      if (!/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{10,}$/.test(password)) {
+        return { error: "密码至少 10 位，并包含大小写字母和数字。" };
+      }
+      if (!confirmPassword) {
+        return { error: "请再次输入密码，避免输错。" };
+      }
+      if (password !== confirmPassword) {
+        return { error: "两次输入的密码不一致，请重新确认。" };
+      }
+      return { password };
+    }
+
+    function togglePasswordVisibility(button) {
+      const input = document.getElementById(button.dataset.passwordTarget);
+      if (!input) return;
+      const isVisible = input.type === "text";
+      input.type = isVisible ? "password" : "text";
+      button.classList.toggle("active", !isVisible);
+      button.textContent = isVisible ? "◉" : "◎";
+      button.setAttribute("aria-label", isVisible ? "显示密码" : "隐藏密码");
+    }
+
+    function showToast(text) {
+      dom.toast.textContent = text;
+      dom.toast.classList.add("show");
+      clearTimeout(toastTimer);
+      toastTimer = setTimeout(() => dom.toast.classList.remove("show"), 2100);
+    }
+
+    function escapeHtml(value = "") {
+      return String(value).replace(/[&<>"']/g, s => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#039;" }[s]));
+    }
+
+    function timeAgo(ts) {
+      const diff = Math.max(0, Date.now() - ts);
+      const min = 60000, hour = 60 * min, day = 24 * hour;
+      if (diff < min) return "刚刚";
+      if (diff < hour) return Math.floor(diff / min) + "分钟前";
+      if (diff < day) return Math.floor(diff / hour) + "小时前";
+      return Math.floor(diff / day) + "天前";
+    }
+
+    function init() {
+      fillSelect(dom.zoneSelect, CAMPUSES, "全校");
+      dom.zoneSelect.options[0].textContent = "全部";
+      dom.zoneSelect.options[0].value = "全部";
+      fillSelect(dom.postZone, CAMPUSES);
+      fillSelect(dom.profileCollege, COLLEGES, "请选择学院或机构");
+      fillSelect(dom.profileGrade, GRADES, "请选择年级");
+      refreshCaptcha();
+      renderAvatarGrid(dom.setupAvatarGrid, dom.setupAvatarPreview, "setup");
+      renderAvatarGrid(dom.profileAvatarGrid, dom.profileAvatarPreview, "profile");
+      dom.setupAvatarPreview.src = me().avatar || avatars[0];
+      dom.setupName.value = me().name || "";
+      renderHiddenContacts();
+      bindEvents();
+      restoreSupabaseSession();
+    }
+
+    function renderAvatarGrid(container, preview, mode) {
+      container.innerHTML = avatars.map((src, index) => `
+        <button class="avatar-option ${index === 0 ? "active" : ""}" data-avatar="${src}" data-mode="${mode}">
+          <img class="avatar-md" src="${src}" alt="默认头像 ${index + 1}">
+        </button>
+      `).join("");
+      container.onclick = (event) => {
+        const btn = event.target.closest(".avatar-option");
+        if (!btn) return;
+        container.querySelectorAll(".avatar-option").forEach(item => item.classList.remove("active"));
+        btn.classList.add("active");
+        preview.src = btn.dataset.avatar;
+      };
+    }
+
+    function switchAuthTab(tab) {
+      $$(".auth-tab").forEach(btn => btn.classList.toggle("active", btn.dataset.authTab === tab));
+      dom.loginForm.classList.toggle("active", tab === "login");
+      dom.registerForm.classList.toggle("active", tab === "register");
+    }
+
+    function supabaseClient() {
+      return window.SJTUSeekSupabase && window.SJTUSeekSupabase.client;
+    }
+
+    function supabaseApi() {
+      return window.SJTUSeekApi;
+    }
+
+    function supabaseUnavailableMessage() {
+      if (window.location.protocol === "file:") {
+        return "当前是 file:// 打开，未连接 Supabase，邮件不会发送。请用 http://localhost:5173 打开。";
+      }
+      return "Supabase 仍在加载或网络不可用，请稍后重试。";
+    }
+
+    function waitForSupabaseReady(timeout = 10000) {
+      if (supabaseClient() && supabaseApi()) return Promise.resolve(true);
+      return new Promise(resolve => {
+        let settled = false;
+        const done = () => {
+          if (settled) return;
+          if (supabaseClient() && supabaseApi()) {
+            settled = true;
+            window.removeEventListener("sjtu-seek:supabase-ready", done);
+            window.removeEventListener("sjtu-seek:api-ready", done);
+            resolve(true);
+          }
+        };
+        window.addEventListener("sjtu-seek:supabase-ready", done);
+        window.addEventListener("sjtu-seek:api-ready", done);
+        setTimeout(() => {
+          if (settled) return;
+          settled = true;
+          window.removeEventListener("sjtu-seek:supabase-ready", done);
+          window.removeEventListener("sjtu-seek:api-ready", done);
+          resolve(false);
+        }, timeout);
+      });
+    }
+
+    function ensureLocalUserFromSupabase(user, profileRow = null) {
+      if (!user) return;
+      state.currentUser = user.id;
+      let local = state.users.find(item => item.id === user.id);
+      if (!local) {
+        local = {
+          id: user.id,
+          name: profileRow?.nickname || user.email?.split("@")[0] || "SJTUer",
+          avatar: profileRow?.avatar_url || avatars[0],
+          profileReady: Boolean(profileRow),
+          profile: profileRow?.profile || defaultProfile()
+        };
+        state.users.push(local);
+      } else if (profileRow) {
+        local.name = profileRow.nickname || local.name;
+        local.avatar = profileRow.avatar_url || local.avatar;
+        local.profile = { ...defaultProfile(), ...(profileRow.profile || local.profile || {}) };
+        local.profileReady = true;
+      }
+    }
+
+    async function syncSupabaseProfile() {
+      const client = supabaseClient();
+      const api = supabaseApi();
+      if (!client || !api || !state.auth.loggedIn) return null;
+      const { data } = await client.auth.getUser();
+      const user = data && data.user;
+      if (!user) return null;
+      const row = await api.updateProfile(user.id, {
+        nickname: me().name || user.email.split("@")[0],
+        avatar_url: me().avatar,
+        profile: me().profile || defaultProfile()
+      });
+      ensureLocalUserFromSupabase(user, row);
+      save();
+      return row;
+    }
+
+    async function loadRemotePosts() {
+      const api = supabaseApi();
+      if (!api || !state.auth.loggedIn) return;
+      try {
+        const remotePosts = await api.listPosts(state.currentUser);
+        remotePosts.forEach(post => {
+          const author = post._authorProfile;
+          if (author && !state.users.some(user => user.id === author.id)) {
+            state.users.push({
+              id: author.id,
+              name: author.nickname || "SJTUer",
+              avatar: author.avatar_url || avatars[0],
+              profileReady: true,
+              profile: { ...defaultProfile(), ...(author.profile || {}) }
+            });
+          }
+        });
+        const localDemoPosts = state.posts.filter(post => !post._remote && String(post.id).startsWith("demo-"));
+        state.posts = [...remotePosts, ...localDemoPosts];
+        save();
+        renderAll();
+      } catch (error) {
+        showToast(error.message || "读取 Supabase 帖子失败。");
+      }
+    }
+
+    function setupRealtime() {
+      const api = supabaseApi();
+      if (!api || postsRealtimeChannel) return;
+      postsRealtimeChannel = api.subscribePosts(() => loadRemotePosts());
+    }
+
+    function isUuid(value) {
+      return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(String(value));
+    }
+
+    function mapRemoteMessage(row) {
+      return {
+        from: row.sender_id,
+        type: row.type || "text",
+        text: row.content || "",
+        name: row.file_name || "",
+        size: row.file_size || 0,
+        data: row.file_url || "",
+        duration: row.duration || 0,
+        at: new Date(row.created_at).getTime(),
+        _remote: true
+      };
+    }
+
+    async function restoreSupabaseSession() {
+      const client = supabaseClient();
+      const api = supabaseApi();
+      if (!client || !api) {
+        dom.loginScreen.classList.add("active");
+        window.addEventListener("sjtu-seek:api-ready", restoreSupabaseSession, { once: true });
+        return;
+      }
+      const { data } = await client.auth.getSession();
+      const session = data && data.session;
+      state.auth.loggedIn = !!session;
+      state.auth.currentEmail = session && session.user ? session.user.email : "";
+      if (session && session.user) ensureLocalUserFromSupabase(session.user);
+      save();
+      if (!state.auth.loggedIn) dom.loginScreen.classList.add("active");
+      else {
+        await syncSupabaseProfile();
+        await loadRemotePosts();
+        setupRealtime();
+        if (me().profileReady) enterApp();
+        else dom.setupScreen.classList.add("active");
+      }
+    }
+
+    async function login() {
+      const parsed = emailFromPrefix(dom.loginEmail.value);
+      if (parsed.error) return showToast(parsed.error);
+      const email = parsed.email;
+      const password = dom.loginPassword.value;
+      if (!password) return showToast("请输入密码。");
+      const ready = await waitForSupabaseReady();
+      if (!ready) return showToast(supabaseUnavailableMessage());
+      const client = supabaseClient();
+      const { data, error } = await client.auth.signInWithPassword({ email, password });
+      if (error) return showToast(authErrorMessage(error));
+      state.auth.loggedIn = true;
+      state.auth.currentEmail = email;
+      ensureLocalUserFromSupabase(data.user);
+      save();
+      await syncSupabaseProfile();
+      await loadRemotePosts();
+      setupRealtime();
+      dom.loginScreen.classList.remove("active");
+      if (me().profileReady) enterApp();
+      else dom.setupScreen.classList.add("active");
+      showToast("登录成功。");
+    }
+
+    async function sendSupabaseSignupOtp() {
+      const parsed = emailFromPrefix(dom.registerEmail.value);
+      if (parsed.error) return showToast(parsed.error);
+      const email = parsed.email;
+      const passwordCheck = validateRegisterPassword();
+      if (passwordCheck.error) return showToast(passwordCheck.error);
+      const ready = await waitForSupabaseReady();
+      if (!ready) return showToast(supabaseUnavailableMessage());
+      const client = supabaseClient();
+      const { error } = await client.auth.signUp({
+        email,
+        password: passwordCheck.password,
+        options: {
+          emailRedirectTo: window.location.href
+        }
+      });
+      if (error) return showToast(authErrorMessage(error));
+      state.auth.currentEmail = email;
+      save();
+      showToast(`已向 ${email} 请求发送 8 位验证码，请检查邮箱/垃圾邮件。`);
+    }
+
+    async function registerAccount() {
+      const parsed = emailFromPrefix(dom.registerEmail.value);
+      if (parsed.error) return showToast(parsed.error);
+      const email = parsed.email;
+      const passwordCheck = validateRegisterPassword();
+      if (passwordCheck.error) return showToast(passwordCheck.error);
+      const token = dom.emailCodeInput.value.trim();
+      const captcha = dom.captchaInput.value.trim().toUpperCase();
+      if (!/^\d{8}$/.test(token)) return showToast("请输入交大邮箱收到的 8 位数字验证码。");
+      if (captcha !== state.auth.captcha) {
+        refreshCaptcha();
+        return showToast("独立验证码不正确，请重新输入。");
+      }
+      const ready = await waitForSupabaseReady();
+      if (!ready) return showToast(supabaseUnavailableMessage());
+      const client = supabaseClient();
+      let result = await client.auth.verifyOtp({ email, token, type: "signup" });
+      if (result.error && /invalid|type/i.test(result.error.message || "")) {
+        result = await client.auth.verifyOtp({ email, token, type: "email" });
+      }
+      if (result.error) {
+        refreshCaptcha();
+        return showToast(authErrorMessage(result.error));
+      }
+      state.auth.loggedIn = true;
+      state.auth.currentEmail = email;
+      ensureLocalUserFromSupabase(result.data.user);
+      save();
+      await syncSupabaseProfile();
+      await loadRemotePosts();
+      setupRealtime();
+      dom.loginScreen.classList.remove("active");
+      if (me().profileReady) enterApp();
+      else dom.setupScreen.classList.add("active");
+      showToast("邮箱验证成功，注册完成。");
+    }
+
+    async function forgotPassword() {
+      const parsed = emailFromPrefix(dom.loginEmail.value);
+      if (parsed.error) return showToast(parsed.error);
+      const email = parsed.email;
+      const ready = await waitForSupabaseReady();
+      if (!ready) return showToast(supabaseUnavailableMessage());
+      const client = supabaseClient();
+      const { error } = await client.auth.resetPasswordForEmail(email, {
+        redirectTo: window.location.href
+      });
+      if (error) return showToast(authErrorMessage(error));
+      showToast("密码重置邮件已发送，请查看交大邮箱。");
+    }
+
+    function authErrorMessage(error) {
+      const msg = (error && error.message) || "";
+      if (/invalid login credentials/i.test(msg)) return "邮箱或密码不正确。";
+      if (/email not confirmed/i.test(msg)) return "邮箱尚未验证，请先查看验证邮件。";
+      if (/user already registered/i.test(msg)) return "该邮箱已注册，请直接登录。";
+      if (/rate limit|over_email_send_rate_limit/i.test(msg)) return "邮件发送过于频繁，请稍后再试。";
+      return msg || "认证失败，请稍后再试。";
+    }
+
+    function enterApp() {
+      dom.setupScreen.classList.remove("active");
+      dom.loginScreen.classList.remove("active");
+      dom.appScreen.classList.add("active");
+      switchTab("plaza");
+      renderAll();
+    }
+
+    function bindEvents() {
+      $$(".auth-tab").forEach(btn => btn.onclick = () => switchAuthTab(btn.dataset.authTab));
+      $$(".password-toggle").forEach(btn => btn.onclick = () => togglePasswordVisibility(btn));
+      dom.loginBtn.onclick = login;
+      dom.loginPassword.onkeydown = event => { if (event.key === "Enter") login(); };
+      dom.forgotPasswordBtn.onclick = forgotPassword;
+      dom.sendEmailCodeBtn.onclick = sendSupabaseSignupOtp;
+      dom.registerBtn.onclick = registerAccount;
+      dom.captchaBox.onclick = refreshCaptcha;
+      dom.setupUploadBtn.onclick = () => dom.setupAvatarInput.click();
+      dom.profileUploadBtn.onclick = () => dom.profileAvatarInput.click();
+      dom.setupAvatarInput.onchange = () => readSingleImage(dom.setupAvatarInput, src => dom.setupAvatarPreview.src = src);
+      dom.profileAvatarInput.onchange = () => readSingleImage(dom.profileAvatarInput, src => dom.profileAvatarPreview.src = src);
+      dom.finishSetupBtn.onclick = finishSetup;
+
+      $$(".nav-btn").forEach(btn => btn.onclick = () => switchTab(btn.dataset.tab));
+      dom.searchToggle.onclick = () => dom.searchPanel.classList.toggle("open");
+      dom.clearSearch.onclick = () => { dom.searchInput.value = ""; renderPosts(); };
+      dom.searchInput.oninput = () => { recordSearch(dom.searchInput.value); renderHotSearches(); renderPosts(); };
+      dom.tagFilters.onclick = handleTagFilter;
+      dom.sortSelect.onchange = renderPosts;
+      dom.zoneSelect.onchange = renderPosts;
+
+      dom.openComposer.onclick = () => openComposer();
+      dom.closeComposer.onclick = closeComposer;
+      dom.pickPostImages.onclick = () => dom.postImagesInput.click();
+      dom.postImagesInput.onchange = readPostImages;
+      dom.publishPostBtn.onclick = publishPost;
+      $$("input[name='visibility']").forEach(radio => radio.onchange = toggleHiddenContacts);
+
+      dom.postList.onclick = handlePostListClick;
+      dom.closeDetail.onclick = () => dom.detailPage.classList.remove("open");
+      dom.messageList.onclick = handleMessageListClick;
+      dom.closeChat.onclick = closeChat;
+      dom.sendChatBtn.onclick = sendChat;
+      dom.chatInput.onkeydown = event => { if (event.key === "Enter") sendChat(); };
+      dom.pickChatImage.onclick = () => dom.chatImageInput.click();
+      dom.pickChatFile.onclick = () => dom.chatFileInput.click();
+      dom.chatImageInput.onchange = handleChatImage;
+      dom.chatFileInput.onchange = handleChatFile;
+      dom.recordVoiceBtn.onclick = toggleVoiceRecording;
+
+      dom.editProfileBtn.onclick = openProfile;
+      dom.closeProfile.onclick = () => dom.profileModal.classList.remove("open");
+      dom.saveProfileBtn.onclick = saveProfile;
+      dom.mineSections.onclick = handleMineClick;
+
+      setupPullRefresh();
+    }
+
+    function readSingleImage(input, callback) {
+      const file = input.files && input.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = () => callback(reader.result);
+      reader.readAsDataURL(file);
+    }
+
+    async function finishSetup() {
+      const name = dom.setupName.value.trim();
+      if (!name) return showToast("先给自己取一个昵称吧。");
+      Object.assign(me(), { name, avatar: dom.setupAvatarPreview.src || avatars[0], profileReady: true, profile: me().profile || defaultProfile() });
+      save();
+      try {
+        await syncSupabaseProfile();
+      } catch (error) {
+        showToast(error.message || "同步个人资料失败。");
+      }
+      enterApp();
+      showToast("欢迎来到 SJTU Seek。");
+    }
+
+    function switchTab(tab) {
+      activeTab = tab;
+      $$(".tab-page").forEach(page => page.classList.remove("active"));
+      $("#" + tab + "Page").classList.add("active");
+      $$(".nav-btn").forEach(btn => btn.classList.toggle("active", btn.dataset.tab === tab));
+      renderAll();
+    }
+
+    function renderAll() {
+      renderHotSearches();
+      renderPosts();
+      renderMessages();
+      renderMine();
+    }
+
+    function renderHiddenContacts(selected = []) {
+      dom.hiddenContactList.innerHTML = contacts().map(user => `
+        <label class="contact-check">
+          <input type="checkbox" value="${user.id}" ${selected.includes(user.id) ? "checked" : ""}>
+          <img class="avatar-sm" src="${user.avatar}" alt="">
+          ${escapeHtml(user.name)}
+        </label>
+      `).join("");
+    }
+
+    function toggleHiddenContacts() {
+      const type = $("input[name='visibility']:checked").value;
+      dom.hiddenContactList.classList.toggle("hidden", type !== "hide");
+    }
+
+    function openComposer(postId = null) {
+      editingPostId = postId;
+      composerImages = [];
+      dom.postImagePreview.innerHTML = "";
+      $("#composerTitle").textContent = postId ? "编辑可见范围" : "发布需求";
+      const post = postId ? state.posts.find(p => p.id === postId) : null;
+      dom.postTitle.value = post ? post.title : "";
+      dom.postBody.value = post ? post.body : "";
+      dom.postTags.value = post ? post.tags.map(t => "#" + t).join(" ") : "";
+      dom.postZone.value = post ? normalizeCampus(post.zone) : "闵行校区";
+      composerImages = post ? [...post.images] : [];
+      renderPostImagePreview();
+      const visibility = post ? post.visibility : { type: "all", hiddenIds: [] };
+      $$("input[name='visibility']").forEach(radio => radio.checked = radio.value === visibility.type);
+      renderHiddenContacts(visibility.hiddenIds || []);
+      toggleHiddenContacts();
+      dom.composerModal.classList.add("open");
+    }
+
+    function closeComposer() {
+      dom.composerModal.classList.remove("open");
+      editingPostId = null;
+    }
+
+    function readPostImages() {
+      const files = Array.from(dom.postImagesInput.files || []).slice(0, 6);
+      if (!files.length) return;
+      Promise.all(files.map(file => new Promise(resolve => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result);
+        reader.readAsDataURL(file);
+      }))).then(images => {
+        composerImages = composerImages.concat(images).slice(0, 6);
+        renderPostImagePreview();
+      });
+    }
+
+    function renderPostImagePreview() {
+      dom.postImagePreview.innerHTML = composerImages.map(src => `<img src="${src}" alt="帖子配图预览">`).join("");
+    }
+
+    function parseTags(raw, title, body) {
+      const tags = raw.split(/[\s,，#]+/).map(t => t.trim()).filter(Boolean);
+      const text = title + body;
+      const map = [
+        ["搭子", ["搭子", "一起", "游泳", "跑步", "吃饭"]],
+        ["组队", ["组队", "队友", "比赛", "建模", "项目"]],
+        ["二手", ["二手", "出", "转让", "闲置", "电动车"]],
+        ["求助", ["求助", "帮忙", "请问", "借", "找不到"]]
+      ];
+      map.forEach(([tag, words]) => {
+        if (words.some(word => text.includes(word)) && !tags.includes(tag)) tags.unshift(tag);
+      });
+      return [...new Set(tags.length ? tags : ["求助"])];
+    }
+
+    function getVisibilityFromForm() {
+      const type = $("input[name='visibility']:checked").value;
+      const hiddenIds = type === "hide" ? Array.from(dom.hiddenContactList.querySelectorAll("input:checked")).map(i => i.value) : [];
+      return { type, hiddenIds };
+    }
+
+    async function publishPost() {
+      const title = dom.postTitle.value.trim();
+      const body = dom.postBody.value.trim();
+      if (!title || !body) return showToast("标题和正文都要写一下。");
+      if (editingPostId) {
+        const post = state.posts.find(p => p.id === editingPostId);
+        if (!post || post.authorId !== state.currentUser) return;
+        Object.assign(post, {
+          title, body, zone: dom.postZone.value, images: composerImages,
+          tags: parseTags(dom.postTags.value, title, body),
+          visibility: getVisibilityFromForm()
+        });
+        save();
+        if (post._remote && supabaseApi()) {
+          try {
+            await supabaseApi().updatePost(state.currentUser, post.id, post);
+            await loadRemotePosts();
+          } catch (error) {
+            showToast(error.message || "更新远程帖子失败。");
+          }
+        }
+        closeComposer();
+        renderAll();
+        showToast("帖子已更新。");
+        openPostDetail(post.id, false);
+        return;
+      }
+      const post = {
+        id: "p-" + Date.now(),
+        authorId: state.currentUser,
+        title, body,
+        tags: parseTags(dom.postTags.value, title, body),
+        zone: dom.postZone.value,
+        images: composerImages,
+        createdAt: Date.now(),
+        likes: [],
+        favorites: [],
+        views: 0,
+        visibility: getVisibilityFromForm()
+      };
+      state.posts.unshift(post);
+      save();
+      if (state.auth.loggedIn && supabaseApi()) {
+        try {
+          await supabaseApi().createPost(state.currentUser, post);
+          await loadRemotePosts();
+        } catch (error) {
+          showToast(error.message || "发布到 Supabase 失败，已暂存在本地。");
+        }
+      }
+      closeComposer();
+      switchTab("plaza");
+      showToast("发布成功，正在等待恰好的回应。");
+    }
+
+    function visiblePosts() {
+      const keyword = dom.searchInput.value.trim().toLowerCase();
+      const zone = dom.zoneSelect.value;
+      const sorted = state.posts.filter(post => {
+        if (!canSee(post)) return false;
+        const text = [post.title, post.body, post.tags.join(" "), userById(post.authorId).name].join(" ").toLowerCase();
+        return (!keyword || text.includes(keyword))
+          && (activeTag === "全部" || post.tags.includes(activeTag))
+          && (zone === "全部" || post.zone === zone);
+      });
+      return sorted.sort((a, b) => {
+        if (dom.sortSelect.value === "hot") return heat(b) - heat(a) || b.createdAt - a.createdAt;
+        return b.createdAt - a.createdAt;
+      });
+    }
+
+    function canSee(post) {
+      if (post.authorId === state.currentUser) return true;
+      if (!post.visibility || post.visibility.type === "all") return true;
+      if (post.visibility.type === "self") return false;
+      if (post.visibility.type === "hide") return !(post.visibility.hiddenIds || []).includes(state.currentUser);
+      return true;
+    }
+
+    function heat(post) { return (post.likes || []).length; }
+    function isLiked(post) { return (post.likes || []).includes(state.currentUser); }
+    function isFav(post) { return (post.favorites || []).includes(state.currentUser); }
+
+    function renderPosts() {
+      if (!dom.postList) return;
+      const posts = visiblePosts();
+      dom.postList.innerHTML = posts.length ? posts.map(postCardHtml).join("") : `<div class="empty">暂时没有匹配的需求，换个关键词或标签试试。</div>`;
+    }
+
+    function postCardHtml(post, small = false) {
+      const author = userById(post.authorId);
+      const imgs = post.images && post.images.length ? `<div class="thumbs">${post.images.slice(0, 3).map(src => `<img src="${src}" alt="帖子配图">`).join("")}</div>` : "";
+      if (small) {
+        return `<article class="small-card" data-open-post="${post.id}">
+          <h4>${escapeHtml(post.title)}</h4>
+          <p>${escapeHtml(post.body.slice(0, 58))}${post.body.length > 58 ? "..." : ""}</p>
+        </article>`;
+      }
+      return `
+        <article class="post-card" data-open-post="${post.id}">
+          <div class="post-head">
+            <div class="author">
+              <img class="avatar-md" src="${author.avatar}" alt="${escapeHtml(author.name)}">
+              <div><strong>${escapeHtml(author.name)}</strong><span>${timeAgo(post.createdAt)} · ${post.zone}</span></div>
+            </div>
+            <span class="meta">浏览 ${post.views || 0}</span>
+          </div>
+          <h3 class="post-title">${escapeHtml(post.title)}</h3>
+          <div class="post-body-preview">${escapeHtml(post.body)}</div>
+          ${imgs}
+          <div class="post-tags">${post.tags.map(tag => `<button class="tag" data-search-tag="${escapeHtml(tag)}">#${escapeHtml(tag)}</button>`).join("")}</div>
+          <div class="stats"><span>热度 ${heat(post)}</span><span>${isFav(post) ? "已收藏" : "未收藏"}</span></div>
+          <div class="post-actions">
+            <button class="mini-btn active" data-action="respond" data-id="${post.id}">我来</button>
+            <button class="mini-btn ${isFav(post) ? "active" : ""}" data-action="fav" data-id="${post.id}">☆</button>
+            <button class="mini-btn ${isLiked(post) ? "active" : ""}" data-action="like" data-id="${post.id}">♡</button>
+          </div>
+        </article>`;
+    }
+
+    function handlePostListClick(event) {
+      const actionBtn = event.target.closest("[data-action]");
+      if (actionBtn) {
+        event.stopPropagation();
+        handlePostAction(actionBtn.dataset.action, actionBtn.dataset.id);
+        return;
+      }
+      const tagBtn = event.target.closest("[data-search-tag]");
+      if (tagBtn) {
+        event.stopPropagation();
+        dom.searchPanel.classList.add("open");
+        dom.searchInput.value = tagBtn.dataset.searchTag;
+        recordSearch(tagBtn.dataset.searchTag, true);
+        renderAll();
+        return;
+      }
+      const card = event.target.closest("[data-open-post]");
+      if (card) openPostDetail(card.dataset.openPost, true);
+    }
+
+    async function handlePostAction(action, postId) {
+      const post = state.posts.find(p => p.id === postId);
+      if (!post) return;
+      if (action === "respond") return openChatWith(post.authorId, `你好，我看到你发布的「${post.title}」，我可以来回应。`);
+      if (action === "fav") toggleArray(post.favorites, state.currentUser, "已加入我的收藏。", "已取消收藏。");
+      if (action === "like") toggleArray(post.likes, state.currentUser, "点赞成功，热度提升。", "已取消点赞。");
+      save();
+      if (post._remote && supabaseApi()) {
+        try {
+          if (action === "fav") await supabaseApi().setFavorite(state.currentUser, post.id, isFav(post));
+          if (action === "like") await supabaseApi().setLike(state.currentUser, post.id, isLiked(post));
+        } catch (error) {
+          showToast(error.message || "同步点赞/收藏失败。");
+        }
+      }
+      renderAll();
+      if (dom.detailPage.classList.contains("open")) renderDetail(post.id);
+    }
+
+    function toggleArray(arr, value, addText, removeText) {
+      const index = arr.indexOf(value);
+      if (index >= 0) {
+        arr.splice(index, 1);
+        showToast(removeText);
+      } else {
+        arr.push(value);
+        showToast(addText);
+      }
+    }
+
+    function openPostDetail(postId, countView) {
+      const post = state.posts.find(p => p.id === postId);
+      if (!post || !canSee(post)) return showToast("这条帖子暂时不可见。");
+      if (countView) {
+        post.views = (post.views || 0) + 1;
+        state.history = [postId, ...state.history.filter(id => id !== postId)].slice(0, 60);
+        save();
+        if (post._remote && supabaseApi()) supabaseApi().incrementView(post.id).catch(() => {});
+      }
+      renderDetail(postId);
+      dom.detailPage.classList.add("open");
+      renderAll();
+    }
+
+    function renderDetail(postId) {
+      const post = state.posts.find(p => p.id === postId);
+      if (!post) return;
+      const author = userById(post.authorId);
+      const own = post.authorId === state.currentUser;
+      const imgs = post.images && post.images.length ? `<div class="detail-images">${post.images.map(src => `<img src="${src}" alt="帖子配图">`).join("")}</div>` : "";
+      dom.detailContent.innerHTML = `
+        <article class="detail-sheet">
+          <div class="author">
+            <img class="avatar-md" src="${author.avatar}" alt="${escapeHtml(author.name)}">
+            <div><strong>${escapeHtml(author.name)}</strong><span>${timeAgo(post.createdAt)} · ${post.zone} · 浏览 ${post.views || 0}</span></div>
+          </div>
+          <h2>${escapeHtml(post.title)}</h2>
+          <div class="post-tags">${post.tags.map(tag => `<span class="tag">#${escapeHtml(tag)}</span>`).join("")}</div>
+          <div class="detail-body">${escapeHtml(post.body)}</div>
+          ${imgs}
+          <div class="detail-actions">
+            <button class="mini-btn active" data-detail-action="respond" data-id="${post.id}">私信</button>
+            <button class="mini-btn ${isFav(post) ? "active" : ""}" data-detail-action="fav" data-id="${post.id}">收藏 ${post.favorites.length}</button>
+            <button class="mini-btn ${isLiked(post) ? "active" : ""}" data-detail-action="like" data-id="${post.id}">点赞 ${post.likes.length}</button>
+          </div>
+          ${own ? `<div class="detail-actions" style="grid-template-columns:1fr 1fr;margin-top:8px;">
+            <button class="mini-btn" data-detail-action="edit" data-id="${post.id}">编辑帖子</button>
+            <button class="mini-btn danger" data-detail-action="delete" data-id="${post.id}">删除帖子</button>
+          </div>` : ""}
+        </article>`;
+      dom.detailContent.onclick = event => {
+        const btn = event.target.closest("[data-detail-action]");
+        if (!btn) return;
+        const action = btn.dataset.detailAction;
+        if (action === "delete") deletePost(btn.dataset.id);
+        else if (action === "edit") openComposer(btn.dataset.id);
+        else handlePostAction(action, btn.dataset.id);
+      };
+    }
+
+    async function deletePost(postId) {
+      const post = state.posts.find(p => p.id === postId);
+      if (!post || post.authorId !== state.currentUser) return;
+      if (!confirm("确认删除这条帖子吗？删除后全平台都会消失。")) return;
+      state.posts = state.posts.filter(p => p.id !== postId);
+      state.history = state.history.filter(id => id !== postId);
+      save();
+      if (post._remote && supabaseApi()) {
+        try {
+          await supabaseApi().deletePost(post.id);
+        } catch (error) {
+          showToast(error.message || "删除远程帖子失败。");
+        }
+      }
+      dom.detailPage.classList.remove("open");
+      renderAll();
+      showToast("帖子已删除，相关记录已同步移除。");
+    }
+
+    function recordSearch(value, force = false) {
+      const term = value.trim();
+      if (!term || (!force && term.length < 2)) return;
+      state.searchStats[term] = (state.searchStats[term] || 0) + 1;
+      save();
+    }
+
+    function renderHotSearches() {
+      const words = Object.entries(state.searchStats || {}).sort((a, b) => b[1] - a[1]).slice(0, 5).map(([word]) => word);
+      dom.hotSearches.innerHTML = words.map(word => `<button class="chip" data-hot="${escapeHtml(word)}">${escapeHtml(word)}</button>`).join("");
+      dom.hotSearches.onclick = event => {
+        const btn = event.target.closest("[data-hot]");
+        if (!btn) return;
+        dom.searchInput.value = btn.dataset.hot;
+        recordSearch(btn.dataset.hot, true);
+        renderAll();
+      };
+    }
+
+    function handleTagFilter(event) {
+      const btn = event.target.closest("[data-tag]");
+      if (!btn) return;
+      activeTag = btn.dataset.tag;
+      $$("#tagFilters .chip").forEach(item => item.classList.toggle("active", item === btn));
+      renderPosts();
+    }
+
+    function chatIdFor(userId) { return ["me", userId].sort().join("-"); }
+
+    function getChat(userId) {
+      const id = chatIdFor(userId);
+      let chat = state.chats.find(c => c.id === id);
+      if (!chat) {
+        chat = { id, participants: [state.currentUser, userId], updatedAt: Date.now(), messages: [] };
+        state.chats.push(chat);
+      }
+      return chat;
+    }
+
+    async function openChatWith(userId, seedText = "") {
+      if (userId === state.currentUser) return showToast("这是你自己发布的帖子。");
+      activeChatUserId = userId;
+      const chat = getChat(userId);
+      if (seedText && !chat.messages.some(m => m.text === seedText)) {
+        chat.messages.push({ from: state.currentUser, text: seedText, at: Date.now() });
+        chat.updatedAt = Date.now();
+        save();
+      }
+      const other = userById(userId);
+      dom.chatAvatar.src = other.avatar;
+      dom.chatName.textContent = other.name;
+      dom.chatSubtitle.textContent = publicProfileText(other) || "校园互助私信";
+      if (messagesRealtimeChannel && supabaseApi()) {
+        supabaseApi().removeChannel(messagesRealtimeChannel);
+        messagesRealtimeChannel = null;
+      }
+      activeRemoteConversationId = null;
+      if (state.auth.loggedIn && supabaseApi() && isUuid(userId)) {
+        try {
+          const conversation = await supabaseApi().getOrCreateConversation(userId);
+          activeRemoteConversationId = conversation.id;
+          const rows = await supabaseApi().listMessages(conversation.id);
+          chat.messages = rows.map(mapRemoteMessage);
+          if (seedText && !chat.messages.some(m => m.text === seedText)) {
+            await supabaseApi().sendMessage(conversation.id, { type: "text", text: seedText });
+            chat.messages.push({ from: state.currentUser, type: "text", text: seedText, at: Date.now(), _remote: true });
+          }
+          messagesRealtimeChannel = supabaseApi().subscribeMessages(conversation.id, async () => {
+            const latest = await supabaseApi().listMessages(conversation.id);
+            chat.messages = latest.map(mapRemoteMessage);
+            save();
+            renderChat();
+            renderMessages();
+          });
+          save();
+        } catch (error) {
+          showToast(error.message || "打开远程私信失败，已使用本地会话。");
+        }
+      }
+      renderChat();
+      dom.chatPage.classList.add("open");
+      dom.appScreen.classList.add("chat-open");
+      switchTab("messages");
+    }
+
+    function closeChat() {
+      dom.chatPage.classList.remove("open");
+      dom.appScreen.classList.remove("chat-open");
+      if (messagesRealtimeChannel && supabaseApi()) {
+        supabaseApi().removeChannel(messagesRealtimeChannel);
+        messagesRealtimeChannel = null;
+      }
+      activeChatUserId = null;
+      activeRemoteConversationId = null;
+      clearPendingAttachment();
+      stopVoiceVisual();
+    }
+
+    function renderChat() {
+      if (!activeChatUserId) return;
+      const chat = getChat(activeChatUserId);
+      dom.chatMessages.innerHTML = `<div class="chat-day">今天</div>` + (chat.messages.map(msg => `
+        <div class="bubble-row ${msg.from === state.currentUser ? "me" : ""}">
+          ${msg.from === state.currentUser ? "" : `<img class="avatar-sm" src="${userById(msg.from).avatar}" alt="">`}
+          ${messageBubbleHtml(msg)}
+        </div>
+      `).join("") || `<div class="empty">还没有消息，发一句开始沟通吧。</div>`);
+      setTimeout(() => dom.chatMessages.scrollTop = dom.chatMessages.scrollHeight, 0);
+    }
+
+    function messageBubbleHtml(msg) {
+      const type = msg.type || "text";
+      if (type === "image") {
+        return `<div class="bubble image-bubble"><img class="chat-image" src="${msg.data}" alt="${escapeHtml(msg.name || "聊天图片")}"></div>`;
+      }
+      if (type === "file") {
+        return `<div class="bubble file-bubble"><span class="file-icon">文</span><span class="file-meta"><strong>${escapeHtml(msg.name || "文件")}</strong><span>${formatFileSize(msg.size || 0)}</span></span></div>`;
+      }
+      if (type === "voice") {
+        return `<div class="bubble voice-bubble"><span class="voice-icon">声</span><strong>${msg.duration || 1}"</strong><span>语音消息</span></div>`;
+      }
+      return `<div class="bubble">${escapeHtml(msg.text || "")}</div>`;
+    }
+
+    function sendChat() {
+      const text = dom.chatInput.value.trim();
+      if (!activeChatUserId) return;
+      const chat = getChat(activeChatUserId);
+      const attachment = pendingChatAttachment;
+      if (!text && !attachment) return;
+      if (attachment) {
+        chat.messages.push({ from: state.currentUser, at: Date.now(), ...attachment });
+        if (activeRemoteConversationId && supabaseApi()) {
+          supabaseApi().sendMessage(activeRemoteConversationId, attachment).catch(error => showToast(error.message || "远程附件发送失败。"));
+        }
+        clearPendingAttachment();
+      }
+      if (text) {
+        chat.messages.push({ from: state.currentUser, type: "text", text, at: Date.now() });
+        if (activeRemoteConversationId && supabaseApi()) {
+          supabaseApi().sendMessage(activeRemoteConversationId, { type: "text", text }).catch(error => showToast(error.message || "远程消息发送失败。"));
+        }
+      }
+      chat.updatedAt = Date.now();
+      dom.chatInput.value = "";
+      save();
+      renderChat();
+      renderMessages();
+    }
+
+    function handleChatImage() {
+      const file = dom.chatImageInput.files && dom.chatImageInput.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = () => {
+        pendingChatAttachment = { type: "image", name: file.name, size: file.size, data: reader.result };
+        renderAttachmentPreview(`图片：${file.name}`);
+      };
+      reader.readAsDataURL(file);
+      dom.chatImageInput.value = "";
+    }
+
+    function handleChatFile() {
+      const file = dom.chatFileInput.files && dom.chatFileInput.files[0];
+      if (!file) return;
+      pendingChatAttachment = { type: "file", name: file.name, size: file.size };
+      renderAttachmentPreview(`文件：${file.name}`);
+      dom.chatFileInput.value = "";
+    }
+
+    function toggleVoiceRecording() {
+      if (!activeChatUserId) return;
+      if (!voiceRecordingStartedAt) {
+        voiceRecordingStartedAt = Date.now();
+        dom.recordVoiceBtn.classList.add("recording");
+        dom.recordVoiceBtn.setAttribute("aria-label", "停止录音并发送");
+        dom.recordVoiceBtn.title = "停止录音并发送";
+        renderAttachmentPreview("正在录音，点击“停”发送语音");
+        return;
+      }
+      const duration = Math.max(1, Math.round((Date.now() - voiceRecordingStartedAt) / 1000));
+      stopVoiceVisual();
+      const chat = getChat(activeChatUserId);
+      const voiceMessage = { from: state.currentUser, type: "voice", duration, at: Date.now() };
+      chat.messages.push(voiceMessage);
+      if (activeRemoteConversationId && supabaseApi()) {
+        supabaseApi().sendMessage(activeRemoteConversationId, { type: "voice", duration }).catch(error => showToast(error.message || "远程语音发送失败。"));
+      }
+      chat.updatedAt = Date.now();
+      save();
+      clearPendingAttachment();
+      renderChat();
+      renderMessages();
+      showToast("语音已发送。");
+    }
+
+    function stopVoiceVisual() {
+      voiceRecordingStartedAt = 0;
+      dom.recordVoiceBtn.classList.remove("recording");
+      dom.recordVoiceBtn.setAttribute("aria-label", "发送语音");
+      dom.recordVoiceBtn.title = "发送语音";
+    }
+
+    function renderAttachmentPreview(text) {
+      dom.chatAttachmentPreview.innerHTML = `<span>${escapeHtml(text)}</span><button class="ghost" type="button" onclick="clearPendingAttachment()">取消</button>`;
+      dom.chatAttachmentPreview.classList.add("show");
+    }
+
+    function clearPendingAttachment() {
+      pendingChatAttachment = null;
+      dom.chatAttachmentPreview.innerHTML = "";
+      dom.chatAttachmentPreview.classList.remove("show");
+    }
+
+    function formatFileSize(size) {
+      if (!size) return "文件";
+      if (size < 1024) return `${size} B`;
+      if (size < 1024 * 1024) return `${(size / 1024).toFixed(1)} KB`;
+      return `${(size / 1024 / 1024).toFixed(1)} MB`;
+    }
+
+    function renderMessages() {
+      const chats = [...state.chats].sort((a, b) => b.updatedAt - a.updatedAt);
+      dom.messageList.innerHTML = `<div class="message-note"><span>私信会话</span><strong>${chats.length}</strong></div>` + (chats.length ? chats.map(chat => {
+        const otherId = chat.participants.find(id => id !== state.currentUser);
+        const other = userById(otherId);
+        const last = chat.messages[chat.messages.length - 1];
+        const unread = last && last.from !== state.currentUser;
+        return `<article class="message-item ${unread ? "unread" : ""}" data-chat-user="${other.id}">
+          <img class="avatar-md" src="${other.avatar}" alt="${escapeHtml(other.name)}">
+          <div class="message-text">
+            <strong>${escapeHtml(other.name)}</strong>
+            <p>${escapeHtml(last ? lastMessagePreview(last) : "还没有消息")}</p>
+            <p>${escapeHtml(publicProfileText(other) || "SJTU Seek 用户")}</p>
+          </div>
+          <span class="message-time">${timeAgo(chat.updatedAt)}</span>
+        </article>`;
+      }).join("") : `<div class="empty">暂无会话。点击广场里的“我来”即可开始私信。</div>`);
+    }
+
+    function publicProfileText(user) {
+      const profile = (user && user.profile) || defaultProfile();
+      return [
+        profile.privacy.college === "public" && profile.college,
+        profile.privacy.hobbies === "public" && profile.hobbies
+      ].filter(Boolean).join(" · ");
+    }
+
+    function lastMessagePreview(msg) {
+      const type = msg.type || "text";
+      if (type === "image") return "[图片]";
+      if (type === "file") return `[文件] ${msg.name || ""}`;
+      if (type === "voice") return `[语音] ${msg.duration || 1}"`;
+      return msg.text || "";
+    }
+
+    function handleMessageListClick(event) {
+      const item = event.target.closest("[data-chat-user]");
+      if (item) openChatWith(item.dataset.chatUser);
+    }
+
+    function renderMine() {
+      const current = me();
+      dom.mineAvatar.src = current.avatar;
+      dom.mineName.textContent = current.name || "未命名同学";
+      const compactInfo = profilePills(current, true, false);
+      const bio = profileBioHtml(current, true);
+      dom.mineInfo.innerHTML = `<div class="info-grid">${compactInfo.length ? compactInfo.join("") : `<span class="info-pill">饮水思源</span>`}</div>${bio}`;
+      const myPosts = state.posts.filter(p => p.authorId === state.currentUser);
+      const favs = state.posts.filter(p => isFav(p));
+      const likes = state.posts.filter(p => isLiked(p));
+      const history = state.history.map(id => state.posts.find(p => p.id === id)).filter(Boolean);
+      dom.mineSections.innerHTML = [
+        sectionHtml("我发布的", myPosts),
+        sectionHtml("我收藏的", favs),
+        sectionHtml("我的点赞", likes),
+        sectionHtml("浏览历史", history),
+        `<details class="mine-section" open><summary><span>个人资料</span><span class="summary-count">资料卡</span><span class="summary-arrow">›</span></summary><div class="section-body">
+          <button class="primary" data-edit-profile="1">修改头像、昵称和资料</button>
+          <div class="small-card">
+            <h4>资料卡</h4>
+            <div class="info-grid">${profilePills(current, true, false).join("") || `<span class="info-pill">还没有填写资料</span>`}</div>
+            ${profileBioHtml(current, true)}
+          </div>
+          <div class="empty">标记为隐私的字段只会在这里展示，不会出现在其他人的资料摘要中。</div>
+        </div></details>`,
+        `<div class="account-actions"><button class="primary logout-btn" data-logout="1">退出登录</button></div>`
+      ].join("");
+    }
+
+    function profilePills(user, includePrivate = false, withLabel = false) {
+      const profile = (user && user.profile) || defaultProfile();
+      const rows = [
+        ["gender", "性别", profile.gender],
+        ["age", "年龄", profile.age],
+        ["grade", "年级", profile.grade],
+        ["college", "学院", profile.college],
+        ["hobbies", "爱好", profile.hobbies]
+      ];
+      return rows
+        .filter(([key, , value]) => value && (includePrivate || profile.privacy[key] === "public"))
+        .map(([key, label, value]) => {
+          const normalized = key === "age" && /^\d+$/.test(String(value)) ? `${value}岁` : value;
+          const text = withLabel ? `${label}：${normalized}` : normalized;
+          const privacy = includePrivate && profile.privacy[key] === "private" ? " · 隐私" : "";
+          return `<span class="info-pill ${profile.privacy[key] === "private" ? "privacy-pill" : ""}">${escapeHtml(text)}${privacy}</span>`;
+        });
+    }
+
+    function profileBioHtml(user, includePrivate = false) {
+      const profile = (user && user.profile) || defaultProfile();
+      if (!profile.bio || (!includePrivate && profile.privacy.bio !== "public")) return "";
+      const privacy = includePrivate && profile.privacy.bio === "private" ? " · 隐私" : "";
+      return `<div class="bio-card ${profile.privacy.bio === "private" ? "private" : ""}">${escapeHtml(profile.bio)}${privacy}</div>`;
+    }
+
+    function sectionHtml(title, posts) {
+      return `<details class="mine-section">
+        <summary><span>${title}</span><span class="summary-count">${posts.length}</span><span class="summary-arrow">›</span></summary>
+        <div class="section-body">${posts.length ? posts.map(p => postCardHtml(p, true)).join("") : `<div class="empty">这里暂时还没有内容。</div>`}</div>
+      </details>`;
+    }
+
+    function handleMineClick(event) {
+      if (event.target.closest("[data-logout]")) return logout();
+      if (event.target.closest("[data-edit-profile]")) return openProfile();
+      const card = event.target.closest("[data-open-post]");
+      if (card) openPostDetail(card.dataset.openPost, true);
+    }
+
+    async function logout() {
+      if (!confirm("确认退出当前账号吗？")) return;
+      const client = supabaseClient();
+      if (client) {
+        const { error } = await client.auth.signOut();
+        if (error) return showToast(authErrorMessage(error));
+      }
+      state.auth.loggedIn = false;
+      state.auth.currentEmail = "";
+      if (supabaseApi() && postsRealtimeChannel) {
+        supabaseApi().removeChannel(postsRealtimeChannel);
+        postsRealtimeChannel = null;
+      }
+      if (supabaseApi() && messagesRealtimeChannel) {
+        supabaseApi().removeChannel(messagesRealtimeChannel);
+        messagesRealtimeChannel = null;
+      }
+      save();
+      dom.appScreen.classList.remove("active");
+      dom.setupScreen.classList.remove("active");
+      dom.detailPage.classList.remove("open");
+      dom.chatPage.classList.remove("open");
+      dom.appScreen.classList.remove("chat-open");
+      dom.profileModal.classList.remove("open");
+      dom.composerModal.classList.remove("open");
+      $$(".tab-page").forEach(page => page.classList.remove("active"));
+      $("#plazaPage").classList.add("active");
+      $$(".nav-btn").forEach(btn => btn.classList.toggle("active", btn.dataset.tab === "plaza"));
+      dom.loginPassword.value = "";
+      dom.loginScreen.classList.add("active");
+      showToast("已退出登录。");
+    }
+
+    function openProfile() {
+      dom.profileAvatarPreview.src = me().avatar;
+      dom.profileName.value = me().name;
+      const profile = me().profile || defaultProfile();
+      dom.profileGender.value = profile.gender || "";
+      dom.profileAge.value = profile.age || "20";
+      dom.profileGrade.value = profile.grade || "";
+      dom.profileCollege.value = profile.college || "";
+      dom.profileHobbies.value = profile.hobbies || "";
+      dom.profileBio.value = profile.bio || "";
+      dom.privacyGender.value = profile.privacy.gender || "public";
+      dom.privacyAge.value = profile.privacy.age || "private";
+      dom.privacyGrade.value = profile.privacy.grade || "public";
+      dom.privacyCollege.value = profile.privacy.college || "public";
+      dom.privacyHobbies.value = profile.privacy.hobbies || "public";
+      dom.privacyBio.value = profile.privacy.bio || "public";
+      dom.profileModal.classList.add("open");
+    }
+
+    async function saveProfile() {
+      const name = dom.profileName.value.trim();
+      if (!name) return showToast("昵称不能为空。");
+      Object.assign(me(), {
+        name,
+        avatar: dom.profileAvatarPreview.src || avatars[0],
+        profileReady: true,
+        profile: {
+          gender: dom.profileGender.value,
+          age: dom.profileAge.value.trim(),
+          grade: dom.profileGrade.value,
+          college: dom.profileCollege.value,
+          hobbies: dom.profileHobbies.value.trim(),
+          bio: dom.profileBio.value.trim(),
+          privacy: {
+            gender: dom.privacyGender.value,
+            age: dom.privacyAge.value,
+            grade: dom.privacyGrade.value,
+            college: dom.privacyCollege.value,
+            hobbies: dom.privacyHobbies.value,
+            bio: dom.privacyBio.value
+          }
+        }
+      });
+      save();
+      try {
+        await syncSupabaseProfile();
+      } catch (error) {
+        showToast(error.message || "同步个人资料失败。");
+      }
+      dom.profileModal.classList.remove("open");
+      renderAll();
+      showToast("个人资料已同步更新。");
+    }
+
+    function setupPullRefresh() {
+      let startY = 0;
+      let pulling = false;
+      document.addEventListener("touchstart", event => {
+        if (window.scrollY === 0) {
+          startY = event.touches[0].clientY;
+          pulling = true;
+        }
+      }, { passive: true });
+      document.addEventListener("touchmove", event => {
+        if (!pulling) return;
+        const distance = event.touches[0].clientY - startY;
+        if (distance > 70) dom.refreshTip.classList.add("show");
+      }, { passive: true });
+      document.addEventListener("touchend", () => {
+        if (!pulling) return;
+        pulling = false;
+        if (dom.refreshTip.classList.contains("show")) {
+          dom.refreshTip.textContent = "正在刷新...";
+          setTimeout(() => {
+            state = loadState();
+            renderAll();
+            dom.refreshTip.textContent = "已更新到最新需求帖子";
+            showToast("已更新到最新需求帖子。");
+            setTimeout(() => {
+              dom.refreshTip.classList.remove("show");
+              dom.refreshTip.textContent = "正在刷新...";
+            }, 900);
+          }, 500);
+        }
+      }, { passive: true });
+    }
+
+    init();
+  </script>
+</body>
+</html>
