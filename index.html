@@ -2241,6 +2241,47 @@
       showToast("登录成功。");
     }
 
+    const EMAIL_CODE_COOLDOWN_SECONDS = 60;
+
+    function startEmailCodeCooldown(seconds = EMAIL_CODE_COOLDOWN_SECONDS) {
+      dom.sendEmailCodeBtn.disabled = true;
+      dom.sendEmailCodeBtn.textContent = `${seconds}s`;
+      const timer = setInterval(() => {
+        seconds -= 1;
+        dom.sendEmailCodeBtn.textContent = seconds > 0 ? `${seconds}s` : "发送验证码";
+        if (seconds <= 0) {
+          clearInterval(timer);
+          dom.sendEmailCodeBtn.disabled = false;
+        }
+      }, 1000);
+    }
+
+    function shouldResendSignupOtp(signupResult) {
+      const message = signupResult.error?.message || "";
+      if (/already|registered|exists|confirmed|signup/i.test(message)) return true;
+      return Boolean(
+        !signupResult.error &&
+        signupResult.data?.user &&
+        Array.isArray(signupResult.data.user.identities) &&
+        signupResult.data.user.identities.length === 0
+      );
+    }
+
+    async function requestSignupOtp(client, email, password, redirectTo) {
+      const signup = await client.auth.signUp({
+        email,
+        password,
+        options: { emailRedirectTo: redirectTo }
+      });
+      if (!shouldResendSignupOtp(signup)) return signup.error;
+      const resend = await client.auth.resend({
+        type: "signup",
+        email,
+        options: { emailRedirectTo: redirectTo }
+      });
+      return resend.error;
+    }
+
     async function sendSupabaseSignupOtp() {
       const parsed = emailFromPrefix(dom.registerEmail.value);
       if (parsed.error) return showToast(parsed.error);
@@ -2253,44 +2294,20 @@
       dom.sendEmailCodeBtn.disabled = true;
       dom.sendEmailCodeBtn.textContent = "发送中";
       try {
-        const redirectTo = window.location.href;
-        const signup = await client.auth.signUp({
-          email,
-          password: passwordCheck.password,
-          options: { emailRedirectTo: redirectTo }
-        });
-        let error = signup.error;
-        const shouldResend = !error && signup.data?.user && signup.data.user.identities && signup.data.user.identities.length === 0;
-        if (error && /already|registered|exists|confirmed|signup/i.test(error.message || "")) {
-          const resend = await client.auth.resend({
-            type: "signup",
-            email,
-            options: { emailRedirectTo: redirectTo }
-          });
-          error = resend.error;
-        } else if (shouldResend) {
-          const resend = await client.auth.resend({
-            type: "signup",
-            email,
-            options: { emailRedirectTo: redirectTo }
-          });
-          error = resend.error;
+        const error = await requestSignupOtp(client, email, passwordCheck.password, window.location.href);
+        if (error) {
+          dom.sendEmailCodeBtn.disabled = false;
+          dom.sendEmailCodeBtn.textContent = "发送验证码";
+          return showToast(authErrorMessage(error));
         }
-        if (error) return showToast(authErrorMessage(error));
         state.auth.currentEmail = email;
         save();
         showToast(`已向 ${email} 请求发送验证码，请查看最新邮件。`);
-      } finally {
-        let seconds = 30;
-        dom.sendEmailCodeBtn.textContent = `${seconds}s`;
-        const timer = setInterval(() => {
-          seconds -= 1;
-          dom.sendEmailCodeBtn.textContent = seconds > 0 ? `${seconds}s` : "发送验证码";
-          if (seconds <= 0) {
-            clearInterval(timer);
-            dom.sendEmailCodeBtn.disabled = false;
-          }
-        }, 1000);
+        startEmailCodeCooldown();
+      } catch (error) {
+        dom.sendEmailCodeBtn.disabled = false;
+        dom.sendEmailCodeBtn.textContent = "发送验证码";
+        showToast(authErrorMessage(error));
       }
     }
 
