@@ -2250,17 +2250,48 @@
       const ready = await waitForSupabaseReady();
       if (!ready) return showToast(supabaseUnavailableMessage());
       const client = supabaseClient();
-      const { error } = await client.auth.signUp({
-        email,
-        password: passwordCheck.password,
-        options: {
-          emailRedirectTo: window.location.href
+      dom.sendEmailCodeBtn.disabled = true;
+      dom.sendEmailCodeBtn.textContent = "发送中";
+      try {
+        const redirectTo = window.location.href;
+        const signup = await client.auth.signUp({
+          email,
+          password: passwordCheck.password,
+          options: { emailRedirectTo: redirectTo }
+        });
+        let error = signup.error;
+        const shouldResend = !error && signup.data?.user && signup.data.user.identities && signup.data.user.identities.length === 0;
+        if (error && /already|registered|exists|confirmed|signup/i.test(error.message || "")) {
+          const resend = await client.auth.resend({
+            type: "signup",
+            email,
+            options: { emailRedirectTo: redirectTo }
+          });
+          error = resend.error;
+        } else if (shouldResend) {
+          const resend = await client.auth.resend({
+            type: "signup",
+            email,
+            options: { emailRedirectTo: redirectTo }
+          });
+          error = resend.error;
         }
-      });
-      if (error) return showToast(authErrorMessage(error));
-      state.auth.currentEmail = email;
-      save();
-      showToast(`已向 ${email} 请求发送 8 位验证码，请检查邮箱/垃圾邮件。`);
+        if (error) return showToast(authErrorMessage(error));
+        state.auth.currentEmail = email;
+        save();
+        showToast(`已向 ${email} 请求发送验证码，请查看最新邮件。`);
+      } finally {
+        let seconds = 30;
+        dom.sendEmailCodeBtn.textContent = `${seconds}s`;
+        const timer = setInterval(() => {
+          seconds -= 1;
+          dom.sendEmailCodeBtn.textContent = seconds > 0 ? `${seconds}s` : "发送验证码";
+          if (seconds <= 0) {
+            clearInterval(timer);
+            dom.sendEmailCodeBtn.disabled = false;
+          }
+        }, 1000);
+      }
     }
 
     async function registerAccount() {
@@ -2319,7 +2350,8 @@
       if (/invalid login credentials/i.test(msg)) return "邮箱或密码不正确。";
       if (/email not confirmed/i.test(msg)) return "邮箱尚未验证，请先查看验证邮件。";
       if (/user already registered/i.test(msg)) return "该邮箱已注册，请直接登录。";
-      if (/rate limit|over_email_send_rate_limit/i.test(msg)) return "邮件发送过于频繁，请稍后再试。";
+      if (/rate limit|over_email_send_rate_limit|security purposes/i.test(msg)) return "邮件发送过于频繁，请等待几分钟后再试。";
+      if (/expired|invalid token|token/i.test(msg)) return "验证码已过期或无效，请重新发送并填写最新邮件中的验证码。";
       return msg || "认证失败，请稍后再试。";
     }
 
