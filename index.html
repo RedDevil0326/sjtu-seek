@@ -1359,8 +1359,8 @@
 
     const supabase = createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
       auth: {
-        persistSession: true,
-        autoRefreshToken: true,
+        persistSession: false,
+        autoRefreshToken: false,
         detectSessionInUrl: true
       },
       realtime: {
@@ -1383,10 +1383,14 @@
     function dataUrlToBlob(dataUrl) {
       const [meta, base64] = dataUrl.split(",");
       const mime = (meta.match(/data:(.*?);/) || [])[1] || "application/octet-stream";
-      const binary = atob(base64);
-      const bytes = new Uint8Array(binary.length);
-      for (let i = 0; i < binary.length; i += 1) bytes[i] = binary.charCodeAt(i);
-      return new Blob([bytes], { type: mime });
+      if (!base64) throw new Error("图片数据不完整。");
+      if (meta.includes(";base64")) {
+        const binary = atob(base64);
+        const bytes = new Uint8Array(binary.length);
+        for (let i = 0; i < binary.length; i += 1) bytes[i] = binary.charCodeAt(i);
+        return new Blob([bytes], { type: mime });
+      }
+      return new Blob([decodeURIComponent(base64)], { type: mime });
     }
 
     function extFromMime(mime, fallback = "bin") {
@@ -1394,21 +1398,27 @@
       if (mime.includes("jpeg") || mime.includes("jpg")) return "jpg";
       if (mime.includes("gif")) return "gif";
       if (mime.includes("webp")) return "webp";
+      if (mime.includes("svg")) return "svg";
       return fallback;
     }
 
     async function uploadDataUrl(bucket, path, dataUrl) {
       if (!dataUrl || !dataUrl.startsWith("data:")) return dataUrl;
-      const blob = dataUrlToBlob(dataUrl);
-      const ext = extFromMime(blob.type);
-      const fullPath = `${path}.${ext}`;
-      const { error } = await supabase.storage.from(bucket).upload(fullPath, blob, {
-        upsert: true,
-        contentType: blob.type
-      });
-      if (error) throw error;
-      const { data } = supabase.storage.from(bucket).getPublicUrl(fullPath);
-      return data.publicUrl;
+      try {
+        const blob = dataUrlToBlob(dataUrl);
+        const ext = extFromMime(blob.type);
+        const fullPath = `${path}.${ext}`;
+        const { error } = await supabase.storage.from(bucket).upload(fullPath, blob, {
+          upsert: true,
+          contentType: blob.type
+        });
+        if (error) throw error;
+        const { data } = supabase.storage.from(bucket).getPublicUrl(fullPath);
+        return data.publicUrl;
+      } catch (error) {
+        console.warn("SJTU Seek: image upload skipped", error);
+        return dataUrl;
+      }
     }
 
     function mapPost(row, currentUserId) {
@@ -1932,7 +1942,7 @@
         return normalized;
       });
       merged.posts = merged.posts || base.posts;
-      merged.chats = merged.chats || base.chats;
+      merged.chats = (merged.chats || base.chats).filter(chat => Array.isArray(chat.participants) && chat.participants.length === 2);
       merged.history = merged.history || [];
       merged.searchStats = merged.searchStats || base.searchStats;
       merged.auth = { ...base.auth, ...(merged.auth || {}) };
@@ -1944,8 +1954,8 @@
       localStorage.setItem(KEY, JSON.stringify(state));
     }
 
-    function me() { return state.users.find(u => u.id === state.currentUser); }
-    function userById(id) { return state.users.find(u => u.id === id) || state.users[1]; }
+    function me() { return state.users.find(u => u.id === state.currentUser) || state.users[0]; }
+    function userById(id) { return state.users.find(u => u.id === id) || null; }
     function contacts() { return state.users.filter(u => u.id !== state.currentUser); }
 
     function normalizeCampus(zone) {
@@ -2041,7 +2051,7 @@
       dom.setupName.value = me().name || "";
       renderHiddenContacts();
       bindEvents();
-      restoreSupabaseSession();
+      requirePasswordLogin();
     }
 
     function renderAvatarGrid(container, preview, mode) {
@@ -2126,6 +2136,16 @@
       }
     }
 
+    function cleanupCurrentUserChats() {
+      state.chats = (state.chats || []).filter(chat => {
+        if (!Array.isArray(chat.participants) || chat.participants.length !== 2) return false;
+        if (!chat.participants.includes(state.currentUser)) return false;
+        const otherId = chat.participants.find(id => id !== state.currentUser && id !== "me");
+        return Boolean(otherId && userById(otherId));
+      });
+      save();
+    }
+
     async function syncSupabaseProfile() {
       const client = supabaseClient();
       const api = supabaseApi();
@@ -2193,6 +2213,24 @@
       };
     }
 
+    async function requirePasswordLogin() {
+      state.auth.loggedIn = false;
+      state.auth.currentEmail = "";
+      save();
+      dom.setupScreen.classList.remove("active");
+      dom.appScreen.classList.remove("active");
+      dom.loginScreen.classList.add("active");
+      const client = supabaseClient();
+      if (client) {
+        client.auth.signOut().catch(() => {});
+      } else {
+        window.addEventListener("sjtu-seek:supabase-ready", () => {
+          const readyClient = supabaseClient();
+          if (readyClient) readyClient.auth.signOut().catch(() => {});
+        }, { once: true });
+      }
+    }
+
     async function restoreSupabaseSession() {
       const client = supabaseClient();
       const api = supabaseApi();
@@ -2201,19 +2239,30 @@
         window.addEventListener("sjtu-seek:api-ready", restoreSupabaseSession, { once: true });
         return;
       }
-      const { data } = await client.auth.getSession();
-      const session = data && data.session;
-      state.auth.loggedIn = !!session;
-      state.auth.currentEmail = session && session.user ? session.user.email : "";
-      if (session && session.user) ensureLocalUserFromSupabase(session.user);
-      save();
-      if (!state.auth.loggedIn) dom.loginScreen.classList.add("active");
-      else {
-        await syncSupabaseProfile();
-        await loadRemotePosts();
-        setupRealtime();
-        if (me().profileReady) enterApp();
-        else dom.setupScreen.classList.add("active");
+      try {
+        const { data, error } = await client.auth.getSession();
+        if (error) throw error;
+        const session = data && data.session;
+        state.auth.loggedIn = !!session;
+        state.auth.currentEmail = session && session.user ? session.user.email : "";
+        if (session && session.user) ensureLocalUserFromSupabase(session.user);
+        if (session && session.user) cleanupCurrentUserChats();
+        save();
+        if (!state.auth.loggedIn) dom.loginScreen.classList.add("active");
+        else {
+          try {
+            await syncSupabaseProfile();
+            await loadRemotePosts();
+            setupRealtime();
+          } catch (error) {
+            showToast(error.message || "登录状态已恢复，但同步远程数据失败。");
+          }
+          if (me().profileReady) enterApp();
+          else dom.setupScreen.classList.add("active");
+        }
+      } catch (error) {
+        dom.loginScreen.classList.add("active");
+        showToast(authErrorMessage(error));
       }
     }
 
@@ -2226,37 +2275,65 @@
       const ready = await waitForSupabaseReady();
       if (!ready) return showToast(supabaseUnavailableMessage());
       const client = supabaseClient();
-      const { data, error } = await client.auth.signInWithPassword({ email, password });
-      if (error) return showToast(authErrorMessage(error));
-      state.auth.loggedIn = true;
-      state.auth.currentEmail = email;
-      ensureLocalUserFromSupabase(data.user);
-      save();
-      await syncSupabaseProfile();
-      await loadRemotePosts();
-      setupRealtime();
-      dom.loginScreen.classList.remove("active");
-      if (me().profileReady) enterApp();
-      else dom.setupScreen.classList.add("active");
-      showToast("登录成功。");
+      dom.loginBtn.disabled = true;
+      dom.loginBtn.textContent = "登录中";
+      try {
+        const { data, error } = await client.auth.signInWithPassword({ email, password });
+        if (error) return showToast(authErrorMessage(error));
+        state.auth.loggedIn = true;
+        state.auth.currentEmail = email;
+        ensureLocalUserFromSupabase(data.user);
+        cleanupCurrentUserChats();
+        save();
+        dom.loginScreen.classList.remove("active");
+        if (me().profileReady) enterApp();
+        else dom.setupScreen.classList.add("active");
+        showToast("登录成功。");
+        try {
+          await syncSupabaseProfile();
+          await loadRemotePosts();
+          setupRealtime();
+          renderAll();
+        } catch (syncError) {
+          showToast(syncError.message || "已登录，但同步远程数据失败。");
+        }
+      } catch (error) {
+        showToast(authErrorMessage(error));
+      } finally {
+        dom.loginBtn.disabled = false;
+        dom.loginBtn.textContent = "登录";
+      }
     }
 
     const EMAIL_CODE_COOLDOWN_SECONDS = 60;
 
-    function startEmailCodeCooldown(seconds = EMAIL_CODE_COOLDOWN_SECONDS) {
-      dom.sendEmailCodeBtn.disabled = true;
-      dom.sendEmailCodeBtn.textContent = `${seconds}s`;
+    function authRedirectUrl() {
+      return `${window.location.origin}${window.location.pathname}`;
+    }
+
+    function startButtonCooldown(button, label, seconds = EMAIL_CODE_COOLDOWN_SECONDS) {
+      button.disabled = true;
+      button.textContent = `${seconds}s`;
       const timer = setInterval(() => {
         seconds -= 1;
-        dom.sendEmailCodeBtn.textContent = seconds > 0 ? `${seconds}s` : "发送验证码";
+        button.textContent = seconds > 0 ? `${seconds}s` : label;
         if (seconds <= 0) {
           clearInterval(timer);
-          dom.sendEmailCodeBtn.disabled = false;
+          button.disabled = false;
         }
       }, 1000);
     }
 
-    function shouldResendSignupOtp(signupResult) {
+    function resetButton(button, label) {
+      button.disabled = false;
+      button.textContent = label;
+    }
+
+    function startEmailCodeCooldown() {
+      startButtonCooldown(dom.sendEmailCodeBtn, "发送验证码", EMAIL_CODE_COOLDOWN_SECONDS);
+    }
+
+    function isExistingSignup(signupResult) {
       const message = signupResult.error?.message || "";
       if (/already|registered|exists|confirmed|signup/i.test(message)) return true;
       return Boolean(
@@ -2273,13 +2350,10 @@
         password,
         options: { emailRedirectTo: redirectTo }
       });
-      if (!shouldResendSignupOtp(signup)) return signup.error;
-      const resend = await client.auth.resend({
-        type: "signup",
-        email,
-        options: { emailRedirectTo: redirectTo }
-      });
-      return resend.error;
+      if (isExistingSignup(signup)) {
+        return { message: "USER_ALREADY_REGISTERED" };
+      }
+      return signup.error;
     }
 
     async function sendSupabaseSignupOtp() {
@@ -2294,10 +2368,9 @@
       dom.sendEmailCodeBtn.disabled = true;
       dom.sendEmailCodeBtn.textContent = "发送中";
       try {
-        const error = await requestSignupOtp(client, email, passwordCheck.password, window.location.href);
+        const error = await requestSignupOtp(client, email, passwordCheck.password, authRedirectUrl());
         if (error) {
-          dom.sendEmailCodeBtn.disabled = false;
-          dom.sendEmailCodeBtn.textContent = "发送验证码";
+          resetButton(dom.sendEmailCodeBtn, "发送验证码");
           return showToast(authErrorMessage(error));
         }
         state.auth.currentEmail = email;
@@ -2305,8 +2378,7 @@
         showToast(`已向 ${email} 请求发送验证码，请查看最新邮件。`);
         startEmailCodeCooldown();
       } catch (error) {
-        dom.sendEmailCodeBtn.disabled = false;
-        dom.sendEmailCodeBtn.textContent = "发送验证码";
+        resetButton(dom.sendEmailCodeBtn, "发送验证码");
         showToast(authErrorMessage(error));
       }
     }
@@ -2338,6 +2410,7 @@
       state.auth.loggedIn = true;
       state.auth.currentEmail = email;
       ensureLocalUserFromSupabase(result.data.user);
+      cleanupCurrentUserChats();
       save();
       await syncSupabaseProfile();
       await loadRemotePosts();
@@ -2355,18 +2428,31 @@
       const ready = await waitForSupabaseReady();
       if (!ready) return showToast(supabaseUnavailableMessage());
       const client = supabaseClient();
-      const { error } = await client.auth.resetPasswordForEmail(email, {
-        redirectTo: window.location.href
-      });
-      if (error) return showToast(authErrorMessage(error));
-      showToast("密码重置邮件已发送，请查看交大邮箱。");
+      dom.forgotPasswordBtn.disabled = true;
+      dom.forgotPasswordBtn.textContent = "发送中";
+      try {
+        const { error } = await client.auth.resetPasswordForEmail(email, {
+          redirectTo: authRedirectUrl()
+        });
+        if (error) {
+          resetButton(dom.forgotPasswordBtn, "忘记密码");
+          return showToast(authErrorMessage(error));
+        }
+        showToast("密码重置邮件已请求发送，请查看交大邮箱。");
+        startButtonCooldown(dom.forgotPasswordBtn, "忘记密码", EMAIL_CODE_COOLDOWN_SECONDS);
+      } catch (error) {
+        resetButton(dom.forgotPasswordBtn, "忘记密码");
+        showToast(authErrorMessage(error));
+      }
     }
 
     function authErrorMessage(error) {
       const msg = (error && error.message) || "";
       if (/invalid login credentials/i.test(msg)) return "邮箱或密码不正确。";
+      if (/USER_ALREADY_REGISTERED/i.test(msg)) return "该邮箱账号已注册，请直接登录或使用忘记密码。";
       if (/email not confirmed/i.test(msg)) return "邮箱尚未验证，请先查看验证邮件。";
       if (/user already registered/i.test(msg)) return "该邮箱已注册，请直接登录。";
+      if (/not authorized|unauthorized|not allowed/i.test(msg)) return "该邮箱未被当前 Supabase 默认邮件服务授权，请配置自定义 SMTP 或先用项目成员邮箱测试。";
       if (/rate limit|over_email_send_rate_limit|security purposes/i.test(msg)) return "邮件发送过于频繁，请等待几分钟后再试。";
       if (/expired|invalid token|token/i.test(msg)) return "验证码已过期或无效，请重新发送并填写最新邮件中的验证码。";
       return msg || "认证失败，请稍后再试。";
@@ -2604,7 +2690,8 @@
       const zone = dom.zoneSelect.value;
       const sorted = state.posts.filter(post => {
         if (!canSee(post)) return false;
-        const text = [post.title, post.body, post.tags.join(" "), userById(post.authorId).name].join(" ").toLowerCase();
+        const author = userById(post.authorId);
+        const text = [post.title, post.body, post.tags.join(" "), author ? author.name : ""].join(" ").toLowerCase();
         return (!keyword || text.includes(keyword))
           && (activeTag === "全部" || post.tags.includes(activeTag))
           && (zone === "全部" || post.zone === zone);
@@ -2634,7 +2721,7 @@
     }
 
     function postCardHtml(post, small = false) {
-      const author = userById(post.authorId);
+      const author = userById(post.authorId) || { name: "未知同学", avatar: avatars[0] };
       const imgs = post.images && post.images.length ? `<div class="thumbs">${post.images.slice(0, 3).map(src => `<img src="${src}" alt="帖子配图">`).join("")}</div>` : "";
       if (small) {
         return `<article class="small-card" data-open-post="${post.id}">
@@ -2731,7 +2818,7 @@
     function renderDetail(postId) {
       const post = state.posts.find(p => p.id === postId);
       if (!post) return;
-      const author = userById(post.authorId);
+      const author = userById(post.authorId) || { name: "未知同学", avatar: avatars[0] };
       const own = post.authorId === state.currentUser;
       const imgs = post.images && post.images.length ? `<div class="detail-images">${post.images.map(src => `<img src="${src}" alt="帖子配图">`).join("")}</div>` : "";
       dom.detailContent.innerHTML = `
@@ -2810,20 +2897,25 @@
       renderPosts();
     }
 
-    function chatIdFor(userId) { return ["me", userId].sort().join("-"); }
+    function chatIdFor(userId) { return [state.currentUser, userId].sort().join("-"); }
 
     function getChat(userId) {
       const id = chatIdFor(userId);
-      let chat = state.chats.find(c => c.id === id);
+      let chat = state.chats.find(c => c.id === id || (Array.isArray(c.participants) && c.participants.includes(state.currentUser) && c.participants.includes(userId)));
       if (!chat) {
         chat = { id, participants: [state.currentUser, userId], updatedAt: Date.now(), messages: [] };
         state.chats.push(chat);
+      } else {
+        chat.id = id;
+        chat.participants = [state.currentUser, userId];
       }
       return chat;
     }
 
     async function openChatWith(userId, seedText = "") {
       if (userId === state.currentUser) return showToast("这是你自己发布的帖子。");
+      const other = userById(userId);
+      if (!other) return showToast("暂时找不到这位同学的资料。");
       activeChatUserId = userId;
       const chat = getChat(userId);
       if (seedText && !chat.messages.some(m => m.text === seedText)) {
@@ -2831,7 +2923,6 @@
         chat.updatedAt = Date.now();
         save();
       }
-      const other = userById(userId);
       dom.chatAvatar.src = other.avatar;
       dom.chatName.textContent = other.name;
       dom.chatSubtitle.textContent = publicProfileText(other) || "校园互助私信";
@@ -2886,7 +2977,7 @@
       const chat = getChat(activeChatUserId);
       dom.chatMessages.innerHTML = `<div class="chat-day">今天</div>` + (chat.messages.map(msg => `
         <div class="bubble-row ${msg.from === state.currentUser ? "me" : ""}">
-          ${msg.from === state.currentUser ? "" : `<img class="avatar-sm" src="${userById(msg.from).avatar}" alt="">`}
+          ${msg.from === state.currentUser ? "" : `<img class="avatar-sm" src="${(userById(msg.from) || { avatar: avatars[0] }).avatar}" alt="">`}
           ${messageBubbleHtml(msg)}
         </div>
       `).join("") || `<div class="empty">还没有消息，发一句开始沟通吧。</div>`);
@@ -3005,11 +3096,16 @@
     }
 
     function renderMessages() {
-      const chats = [...state.chats].sort((a, b) => b.updatedAt - a.updatedAt);
+      const chats = [...state.chats]
+        .filter(chat => Array.isArray(chat.participants) && chat.participants.includes(state.currentUser))
+        .map(chat => ({ chat, otherId: chat.participants.find(id => id && id !== state.currentUser && id !== "me") }))
+        .filter(item => item.otherId && userById(item.otherId))
+        .sort((a, b) => b.chat.updatedAt - a.chat.updatedAt);
+      state.chats = chats.map(item => item.chat);
+      save();
       dom.messageList.innerHTML = `<div class="message-note"><span>私信会话</span><strong>${chats.length}</strong></div>` + (chats.length ? chats.map(chat => {
-        const otherId = chat.participants.find(id => id !== state.currentUser);
-        const other = userById(otherId);
-        const last = chat.messages[chat.messages.length - 1];
+        const other = userById(chat.otherId);
+        const last = chat.chat.messages[chat.chat.messages.length - 1];
         const unread = last && last.from !== state.currentUser;
         return `<article class="message-item ${unread ? "unread" : ""}" data-chat-user="${other.id}">
           <img class="avatar-md" src="${other.avatar}" alt="${escapeHtml(other.name)}">
@@ -3018,7 +3114,7 @@
             <p>${escapeHtml(last ? lastMessagePreview(last) : "还没有消息")}</p>
             <p>${escapeHtml(publicProfileText(other) || "SJTU Seek 用户")}</p>
           </div>
-          <span class="message-time">${timeAgo(chat.updatedAt)}</span>
+          <span class="message-time">${timeAgo(chat.chat.updatedAt)}</span>
         </article>`;
       }).join("") : `<div class="empty">暂无会话。点击广场里的“我来”即可开始私信。</div>`);
     }
