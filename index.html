@@ -1080,7 +1080,7 @@
               <div class="captcha-box" id="captchaBox" title="点击刷新验证码"></div>
             </div>
           </div>
-          <button class="primary" id="registerBtn">验证并注册</button>
+          <button class="primary" id="registerBtn">注册并登录</button>
         </div>
       </div>
     </section>
@@ -1402,7 +1402,7 @@
       return fallback;
     }
 
-    async function uploadDataUrl(bucket, path, dataUrl) {
+    async function uploadDataUrl(bucket, path, dataUrl, options = {}) {
       if (!dataUrl || !dataUrl.startsWith("data:")) return dataUrl;
       try {
         const blob = dataUrlToBlob(dataUrl);
@@ -1417,6 +1417,7 @@
         return data.publicUrl;
       } catch (error) {
         console.warn("SJTU Seek: image upload skipped", error);
+        if (options.required) throw error;
         return dataUrl;
       }
     }
@@ -1466,10 +1467,20 @@
       return data;
     }
 
+    async function getProfile(userId) {
+      const { data, error } = await supabase
+        .from("profiles")
+        .select("*")
+        .eq("id", userId)
+        .maybeSingle();
+      if (error) throw error;
+      return data;
+    }
+
     async function updateProfile(userId, payload) {
       let avatarUrl = payload.avatar_url || null;
       if (avatarUrl && avatarUrl.startsWith("data:")) {
-        avatarUrl = await uploadDataUrl(AVATAR_BUCKET, `${userId}/avatar-${Date.now()}`, avatarUrl);
+        avatarUrl = await uploadDataUrl(AVATAR_BUCKET, `${userId}/avatar-${Date.now()}`, avatarUrl, { required: true });
       }
       const { data, error } = await supabase
         .from("profiles")
@@ -1672,6 +1683,7 @@
 
     window.SJTUSeekApi = {
       ensureProfile,
+      getProfile,
       updateProfile,
       listPosts,
       createPost,
@@ -2115,6 +2127,21 @@
       });
     }
 
+    function normalizedProfileData(profile = {}) {
+      return {
+        ...defaultProfile(),
+        ...(profile || {}),
+        privacy: {
+          ...defaultProfile().privacy,
+          ...((profile && profile.privacy) || {})
+        }
+      };
+    }
+
+    function isCompleteProfileRow(profileRow) {
+      return Boolean(profileRow && profileRow.nickname);
+    }
+
     function ensureLocalUserFromSupabase(user, profileRow = null) {
       if (!user) return;
       state.currentUser = user.id;
@@ -2124,15 +2151,15 @@
           id: user.id,
           name: profileRow?.nickname || user.email?.split("@")[0] || "SJTUer",
           avatar: profileRow?.avatar_url || avatars[0],
-          profileReady: Boolean(profileRow),
-          profile: profileRow?.profile || defaultProfile()
+          profileReady: isCompleteProfileRow(profileRow),
+          profile: normalizedProfileData(profileRow?.profile)
         };
         state.users.push(local);
       } else if (profileRow) {
         local.name = profileRow.nickname || local.name;
         local.avatar = profileRow.avatar_url || local.avatar;
-        local.profile = { ...defaultProfile(), ...(profileRow.profile || local.profile || {}) };
-        local.profileReady = true;
+        local.profile = normalizedProfileData(profileRow.profile || local.profile);
+        local.profileReady = isCompleteProfileRow(profileRow);
       }
     }
 
@@ -2158,6 +2185,20 @@
         avatar_url: me().avatar,
         profile: me().profile || defaultProfile()
       });
+      ensureLocalUserFromSupabase(user, row);
+      save();
+      return row;
+    }
+
+    async function loadSupabaseProfile() {
+      const client = supabaseClient();
+      const api = supabaseApi();
+      if (!client || !api || !state.auth.loggedIn) return null;
+      const { data, error } = await client.auth.getUser();
+      if (error) throw error;
+      const user = data && data.user;
+      if (!user) return null;
+      const row = await api.getProfile(user.id);
       ensureLocalUserFromSupabase(user, row);
       save();
       return row;
@@ -2251,7 +2292,7 @@
         if (!state.auth.loggedIn) dom.loginScreen.classList.add("active");
         else {
           try {
-            await syncSupabaseProfile();
+            await loadSupabaseProfile();
             await loadRemotePosts();
             setupRealtime();
           } catch (error) {
@@ -2285,18 +2326,21 @@
         ensureLocalUserFromSupabase(data.user);
         cleanupCurrentUserChats();
         save();
-        dom.loginScreen.classList.remove("active");
-        if (me().profileReady) enterApp();
-        else dom.setupScreen.classList.add("active");
-        showToast("登录成功。");
         try {
-          await syncSupabaseProfile();
+          await loadSupabaseProfile();
           await loadRemotePosts();
           setupRealtime();
-          renderAll();
         } catch (syncError) {
           showToast(syncError.message || "已登录，但同步远程数据失败。");
         }
+        dom.loginScreen.classList.remove("active");
+        if (me().profileReady) enterApp();
+        else {
+          dom.setupAvatarPreview.src = me().avatar || avatars[0];
+          dom.setupName.value = me().name || "";
+          dom.setupScreen.classList.add("active");
+        }
+        showToast("登录成功。");
       } catch (error) {
         showToast(authErrorMessage(error));
       } finally {
@@ -2412,13 +2456,13 @@
       ensureLocalUserFromSupabase(result.data.user);
       cleanupCurrentUserChats();
       save();
-      await syncSupabaseProfile();
+      await loadSupabaseProfile();
       await loadRemotePosts();
       setupRealtime();
       dom.loginScreen.classList.remove("active");
       if (me().profileReady) enterApp();
       else dom.setupScreen.classList.add("active");
-      showToast("邮箱验证成功，注册完成。");
+      showToast("注册成功，已登录。");
     }
 
     async function forgotPassword() {
@@ -2519,6 +2563,14 @@
     function readSingleImage(input, callback) {
       const file = input.files && input.files[0];
       if (!file) return;
+      if (!file.type.startsWith("image/")) {
+        input.value = "";
+        return showToast("请选择图片文件。");
+      }
+      if (file.size > 5 * 1024 * 1024) {
+        input.value = "";
+        return showToast("头像图片请控制在 5MB 以内。");
+      }
       const reader = new FileReader();
       reader.onload = () => callback(reader.result);
       reader.readAsDataURL(file);
@@ -2533,6 +2585,7 @@
         await syncSupabaseProfile();
       } catch (error) {
         showToast(error.message || "同步个人资料失败。");
+        return;
       }
       enterApp();
       showToast("欢迎来到 SJTU Seek。");
@@ -3289,7 +3342,8 @@
       try {
         await syncSupabaseProfile();
       } catch (error) {
-        showToast(error.message || "同步个人资料失败。");
+        showToast(error.message || "同步个人资料失败，请检查 Supabase profiles 表权限。");
+        return;
       }
       dom.profileModal.classList.remove("open");
       renderAll();
