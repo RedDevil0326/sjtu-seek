@@ -49,7 +49,7 @@
     .screen.active { display: block; }
 
     .login, .setup {
-      padding: 56px 20px 28px;
+      padding: 42px 20px 28px;
       text-align: center;
     }
 
@@ -151,11 +151,11 @@
       display: inline-flex;
       align-items: center;
       align-self: stretch;
-      padding: 0 13px;
+      padding: 0 18px;
       border-left: 1px solid var(--line);
       color: var(--red);
       background: #fff7f8;
-      font-size: 12px;
+      font-size: 18px;
       font-weight: 900;
       white-space: nowrap;
     }
@@ -174,18 +174,38 @@
 
 
     .brand-badge {
-      width: 76px;
-      height: 76px;
-      margin: 0 auto 18px;
+      width: min(62vw, 250px);
+      height: auto;
+      min-height: 56px;
+      margin: 0 auto 12px;
       display: grid;
       place-items: center;
-      border-radius: 24px;
+      border-radius: 22px;
       color: #fff;
-      background: linear-gradient(145deg, var(--red), var(--red-2));
-      box-shadow: 0 18px 32px rgba(176, 31, 46, .25);
+      background: transparent;
+      box-shadow: none;
       font-size: 34px;
       font-weight: 900;
+      overflow: hidden;
     }
+    .brand-badge img {
+      width: 100%;
+      height: auto;
+      display: block;
+      object-fit: contain;
+    }
+    .brand-fallback {
+      width: 76px;
+      height: 76px;
+      display: none;
+      place-items: center;
+      border-radius: 24px;
+      background: linear-gradient(145deg, var(--red), var(--red-2));
+      box-shadow: 0 18px 32px rgba(176, 31, 46, .25);
+    }
+    .brand-badge.logo-missing { width: 76px; }
+    .brand-badge.logo-missing img { display: none; }
+    .brand-badge.logo-missing .brand-fallback { display: grid; }
 
     .eyebrow {
       color: var(--red);
@@ -196,17 +216,17 @@
     }
 
     h1 {
-      margin-bottom: 10px;
-      font-size: clamp(38px, 12vw, 52px);
+      margin-bottom: 8px;
+      font-size: clamp(34px, 10vw, 46px);
       line-height: 1;
       white-space: nowrap;
     }
 
     .subtitle {
       color: #535862;
-      font-size: 18px;
+      font-size: 16px;
       line-height: 1.55;
-      margin: 0 auto 28px;
+      margin: 0 auto 24px;
       max-width: 17em;
     }
 
@@ -647,6 +667,14 @@
     .detail-images { display: grid; gap: 8px; grid-template-columns: repeat(2, 1fr); margin: 12px 0; }
     .detail-actions { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-top: 14px; }
 
+    .message-search {
+      margin-bottom: 12px;
+    }
+    .message-search input {
+      height: 44px;
+      border-radius: 18px;
+      background: #fff;
+    }
     .message-list { display: grid; gap: 10px; }
     .message-note {
       display: flex;
@@ -736,6 +764,22 @@
       color: var(--ink);
       background: #fff;
       border-color: var(--line);
+    }
+    .post-inline-link {
+      display: inline;
+      border: 0;
+      border-radius: 999px;
+      padding: 1px 6px;
+      color: #fff;
+      background: rgba(255, 255, 255, .18);
+      font-weight: 900;
+      box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .28);
+      cursor: pointer;
+    }
+    .bubble-row:not(.me) .post-inline-link {
+      color: var(--red);
+      background: var(--soft-red);
+      box-shadow: inset 0 0 0 1px rgba(176, 31, 46, .14);
     }
     .chat-image {
       width: min(220px, 58vw);
@@ -1074,19 +1118,6 @@
       transition: .22s ease;
     }
     .toast.show { opacity: 1; transform: translate(-50%, 0); }
-    .motto {
-      position: fixed;
-      right: max(12px, calc((100vw - 520px) / 2 + 12px));
-      bottom: 88px;
-      z-index: 25;
-      padding: 8px 11px;
-      border-radius: 999px;
-      border: 1px solid rgba(176,31,46,.16);
-      color: var(--red);
-      background: rgba(255,255,255,.9);
-      font-size: 12px;
-      font-weight: 900;
-    }
 
     @media (min-width: 720px) {
       body { padding: 28px 0; }
@@ -1107,10 +1138,12 @@
 <body>
   <div class="phone">
     <section id="loginScreen" class="screen login">
-      <div class="brand-badge">思</div>
-      <p class="eyebrow">SJTU SEEK ACCOUNT</p>
+      <div class="brand-badge">
+        <img src="seek-logo.png" alt="SJTU Seek Logo" onerror="this.parentElement.classList.add('logo-missing')" />
+        <span class="brand-fallback">思</span>
+      </div>
       <h1>SJTU Seek</h1>
-      <p class="subtitle">使用交大邮箱登录，让每一个需求都找到恰好的回应</p>
+      <p class="subtitle">让每一个需求，都找到恰好的回应</p>
 
       <div class="panel">
         <div class="auth-switch">
@@ -1179,7 +1212,10 @@
     </section>
 
     <section id="setupScreen" class="screen setup">
-      <div class="brand-badge">思</div>
+      <div class="brand-badge">
+        <img src="seek-logo.png" alt="SJTU Seek Logo" onerror="this.parentElement.classList.add('logo-missing')" />
+        <span class="brand-fallback">思</span>
+      </div>
       <p class="eyebrow">SJTU CAMPUS HELP</p>
       <h1>SJTU Seek</h1>
       <p class="subtitle">让每一个需求，都找到恰好的回应</p>
@@ -1208,6 +1244,9 @@
             <p>会话按最近联系排序</p>
           </div>
         </header>
+        <div class="message-search">
+          <input id="messageSearchInput" type="search" placeholder="搜索会话对象或最近消息" />
+        </div>
         <div id="messageList" class="message-list"></div>
       </section>
 
@@ -1462,7 +1501,6 @@
       </div>
     </div>
 
-    <span class="motto" title="饮水思源，爱国荣校">饮水思源</span>
     <div id="toast" class="toast"></div>
   </div>
 
@@ -1932,6 +1970,7 @@
       detailPage: $("#detailPage"),
       detailContent: $("#detailContent"),
       closeDetail: $("#closeDetail"),
+      messageSearchInput: $("#messageSearchInput"),
       messageList: $("#messageList"),
       chatPage: $("#chatPage"),
       closeChat: $("#closeChat"),
@@ -2446,10 +2485,12 @@
     }
 
     function mapRemoteMessage(row) {
+      const parsed = parseMessageContent(row.content || "");
       return {
         from: row.sender_id,
         type: row.type || "text",
-        text: row.content || "",
+        text: parsed.text,
+        postRef: parsed.postRef,
         name: row.file_name || "",
         size: row.file_size || 0,
         data: row.file_url || "",
@@ -2457,6 +2498,25 @@
         at: new Date(row.created_at).getTime(),
         _remote: true
       };
+    }
+
+    function parseMessageContent(content = "") {
+      const text = String(content || "");
+      if (!text.startsWith("__SJTU_SEEK_POST__:")) return { text, postRef: null };
+      try {
+        const data = JSON.parse(text.slice("__SJTU_SEEK_POST__:".length));
+        return {
+          text: data.text || "",
+          postRef: data.postId ? { id: data.postId, title: data.title || "相关帖子" } : null
+        };
+      } catch {
+        return { text, postRef: null };
+      }
+    }
+
+    function encodePostMessage(text, post) {
+      if (!post) return text;
+      return `__SJTU_SEEK_POST__:${JSON.stringify({ text, postId: post.id, title: post.title })}`;
     }
 
     async function requirePasswordLogin() {
@@ -2763,6 +2823,7 @@
       dom.postList.onclick = handlePostListClick;
       dom.closeDetail.onclick = () => dom.detailPage.classList.remove("open");
       dom.messageList.onclick = handleMessageListClick;
+      dom.messageSearchInput.oninput = renderMessages;
       dom.closeChat.onclick = closeChat;
       dom.sendChatBtn.onclick = sendChat;
       dom.chatInput.onkeydown = event => { if (event.key === "Enter") sendChat(); };
@@ -2774,6 +2835,15 @@
       dom.chatAnyFileInput.onchange = handleChatFile;
       dom.chatAvatar.onclick = openActivePeerProfile;
       dom.chatPeerInfo.onclick = openActivePeerProfile;
+      dom.chatMessages.onclick = event => {
+        const btn = event.target.closest("[data-open-chat-post]");
+        if (!btn) return;
+        const post = state.posts.find(item => item.id === btn.dataset.openChatPost);
+        if (!post) return showToast("这条帖子暂时不可见或已被删除。");
+        closeChat();
+        switchTab("plaza");
+        openPostDetail(post.id, true);
+      };
       dom.closePeerProfile.onclick = () => dom.peerProfileModal.classList.remove("open");
 
       dom.editProfileBtn.onclick = openProfile;
@@ -3062,7 +3132,7 @@
         if (!post.responders.includes(state.currentUser)) post.responders.push(state.currentUser);
         save();
         renderAll();
-        return openChatWith(post.authorId, `你好，我看到你发布的「${post.title}」，我可以来回应。`);
+        return openChatWith(post.authorId, `你好，我看到你发布的「${post.title}」，我可以来回应。`, post);
       }
       if (action === "fav") toggleArray(post.favorites, state.currentUser, "已加入我的收藏。", "已取消收藏。");
       if (action === "like") toggleArray(post.likes, state.currentUser, "点赞成功，热度提升。", "已取消点赞。");
@@ -3203,14 +3273,14 @@
       return chat;
     }
 
-    async function openChatWith(userId, seedText = "") {
+    async function openChatWith(userId, seedText = "", postRef = null) {
       if (userId === state.currentUser) return showToast("这是你自己发布的帖子。");
       const other = userById(userId);
       if (!other) return showToast("暂时找不到这位同学的资料。");
       activeChatUserId = userId;
       const chat = getChat(userId);
-      if (seedText && !chat.messages.some(m => m.text === seedText)) {
-        chat.messages.push({ from: state.currentUser, text: seedText, at: Date.now() });
+      if (seedText && !chat.messages.some(m => m.text === seedText && (!postRef || m.postRef?.id === postRef.id))) {
+        chat.messages.push({ from: state.currentUser, type: "text", text: seedText, postRef: postRef ? { id: postRef.id, title: postRef.title } : null, at: Date.now() });
         chat.updatedAt = Date.now();
         save();
       }
@@ -3228,9 +3298,9 @@
           activeRemoteConversationId = conversation.id;
           const rows = await supabaseApi().listMessages(conversation.id);
           chat.messages = rows.map(mapRemoteMessage);
-          if (seedText && !chat.messages.some(m => m.text === seedText)) {
-            await supabaseApi().sendMessage(conversation.id, { type: "text", text: seedText });
-            chat.messages.push({ from: state.currentUser, type: "text", text: seedText, at: Date.now(), _remote: true });
+          if (seedText && !chat.messages.some(m => m.text === seedText && (!postRef || m.postRef?.id === postRef.id))) {
+            await supabaseApi().sendMessage(conversation.id, { type: "text", text: encodePostMessage(seedText, postRef) });
+            chat.messages.push({ from: state.currentUser, type: "text", text: seedText, postRef: postRef ? { id: postRef.id, title: postRef.title } : null, at: Date.now(), _remote: true });
           }
           messagesRealtimeChannel = supabaseApi().subscribeMessages(conversation.id, async () => {
             const latest = await supabaseApi().listMessages(conversation.id);
@@ -3287,6 +3357,16 @@
       }
       if (type === "file") {
         return `<div class="bubble file-bubble"><span class="file-icon">文</span><span class="file-meta"><strong>${escapeHtml(msg.name || "文件")}</strong><span>${formatFileSize(msg.size || 0)}</span></span></div>`;
+      }
+      if (msg.postRef?.id) {
+        const post = state.posts.find(item => item.id === msg.postRef.id);
+        const title = post?.title || msg.postRef.title || "相关帖子";
+        const text = msg.text || `你好，我看到你发布的「${title}」，我可以来回应。`;
+        const escapedTitle = escapeHtml(title);
+        const linkedTitle = `<button class="post-inline-link" data-open-chat-post="${escapeHtml(msg.postRef.id)}">「${escapedTitle}」</button>`;
+        const escapedText = escapeHtml(text);
+        const titleWithQuotes = `「${escapedTitle}」`;
+        return `<div class="bubble">${escapedText.includes(titleWithQuotes) ? escapedText.replace(titleWithQuotes, linkedTitle) : `${escapedText} ${linkedTitle}`}</div>`;
       }
       return `<div class="bubble">${escapeHtml(msg.text || "")}</div>`;
     }
@@ -3383,14 +3463,26 @@
     }
 
     function renderMessages() {
-      const chats = [...state.chats]
+      const keyword = (dom.messageSearchInput?.value || "").trim().toLowerCase();
+      const allChats = [...state.chats]
         .filter(chat => Array.isArray(chat.participants) && chat.participants.includes(state.currentUser))
         .map(chat => ({ chat, otherId: chat.participants.find(id => id && id !== state.currentUser && id !== "me") }))
         .filter(item => item.otherId && userById(item.otherId))
         .sort((a, b) => b.chat.updatedAt - a.chat.updatedAt);
-      state.chats = chats.map(item => item.chat);
+      state.chats = allChats.map(item => item.chat);
       save();
-      dom.messageList.innerHTML = `<div class="message-note"><span>私信会话</span><strong>${chats.length}</strong></div>` + (chats.length ? chats.map(chat => {
+      const chats = keyword ? allChats.filter(item => {
+        const other = userById(item.otherId);
+        const last = item.chat.messages[item.chat.messages.length - 1];
+        const text = [
+          other?.name,
+          publicProfileText(other),
+          lastMessagePreview(last || {}),
+          ...(item.chat.messages || []).slice(-8).map(msg => msg.text || msg.name || "")
+        ].join(" ").toLowerCase();
+        return text.includes(keyword);
+      }) : allChats;
+      dom.messageList.innerHTML = `<div class="message-note"><span>${keyword ? "匹配会话" : "私信会话"}</span><strong>${chats.length}</strong></div>` + (chats.length ? chats.map(chat => {
         const other = userById(chat.otherId);
         const last = chat.chat.messages[chat.chat.messages.length - 1];
         const unread = last && last.from !== state.currentUser;
@@ -3403,7 +3495,7 @@
           </div>
           <span class="message-time">${timeAgo(chat.chat.updatedAt)}</span>
         </article>`;
-      }).join("") : `<div class="empty">暂无会话。点击广场里的“我来”即可开始私信。</div>`);
+      }).join("") : `<div class="empty">${keyword ? "没有匹配的会话。" : "暂无会话。点击广场里的“我来”即可开始私信。"}</div>`);
     }
 
     function publicProfileText(user) {
