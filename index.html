@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
   <title>SJTU Seek</title>
   <style>
     :root {
@@ -16,7 +16,7 @@
       --card: #ffffff;
       --green: #1d9a72;
       --shadow: 0 16px 38px rgba(32, 33, 42, .09);
-      --nav-h: 74px;
+      --nav-h: 84px;
     }
 
     * { box-sizing: border-box; }
@@ -42,7 +42,7 @@
       max-width: 520px;
       min-height: 100vh;
       margin: 0 auto;
-      background: rgba(255, 255, 255, .76);
+      background: #fff;
       position: relative;
       overflow-x: hidden;
     }
@@ -404,9 +404,13 @@
     }
 
     .hidden { display: none !important; }
-    .app { padding-bottom: var(--nav-h); }
+    .app { padding-bottom: calc(var(--nav-h) + env(safe-area-inset-bottom, 0px)); }
 
-    .tab-page { display: none; min-height: calc(100vh - var(--nav-h)); padding: 16px 16px 22px; }
+    .tab-page {
+      display: none;
+      min-height: calc(100vh - var(--nav-h) - env(safe-area-inset-bottom, 0px));
+      padding: 16px 16px calc(24px + env(safe-area-inset-bottom, 0px));
+    }
     .tab-page.active { display: block; }
 
     .topbar {
@@ -625,12 +629,13 @@
       transform: translateX(-50%);
       display: grid;
       grid-template-columns: repeat(3, 1fr);
-      min-height: var(--nav-h);
-      padding: 8px 10px max(8px, env(safe-area-inset-bottom));
+      min-height: calc(var(--nav-h) + env(safe-area-inset-bottom, 0px));
+      padding: 8px 12px calc(12px + env(safe-area-inset-bottom, 0px));
       background: rgba(255, 255, 255, .96);
       border-top: 1px solid var(--line);
       box-shadow: 0 -10px 26px rgba(32, 33, 42, .08);
       backdrop-filter: blur(14px);
+      overflow: hidden;
     }
     .app.chat-open .bottom-nav { display: none; }
     .nav-btn {
@@ -639,8 +644,11 @@
       background: transparent;
       color: #777d88;
       font-size: 15px;
-      line-height: 1.45;
+      line-height: 1.2;
       font-weight: 900;
+      min-height: 58px;
+      padding: 7px 6px 6px;
+      align-self: start;
     }
     .nav-btn span {
       display: block;
@@ -1351,6 +1359,21 @@
     .toast.show { opacity: 1; transform: translate(-50%, 0); }
 
     @media (max-width: 420px) {
+      .app { padding-bottom: calc(92px + env(safe-area-inset-bottom, 0px)); }
+      .bottom-nav {
+        min-height: calc(92px + env(safe-area-inset-bottom, 0px));
+        padding: 9px 12px calc(16px + env(safe-area-inset-bottom, 0px));
+      }
+      .nav-btn {
+        min-height: 60px;
+        border-radius: 20px;
+        font-size: 15px;
+      }
+      .nav-btn span {
+        width: 23px;
+        height: 23px;
+        margin-bottom: 3px;
+      }
       .message-list { gap: 9px; }
       .message-item {
         grid-template-columns: 48px minmax(0, 1fr) max-content;
@@ -1385,11 +1408,11 @@
       .phone {
         min-height: calc(100vh - 56px);
         border: 1px solid var(--line);
-        border-radius: 28px;
+        border-radius: 28px 28px 0 0;
         box-shadow: 0 24px 70px rgba(31,34,44,.1);
-        overflow: hidden;
+        overflow: visible;
       }
-      .bottom-nav, .detail-page, .chat-page { border-radius: 0 0 28px 28px; }
+      .bottom-nav, .detail-page, .chat-page { border-radius: 0; }
       .detail-page, .chat-page { height: 100%; top: 0; bottom: 0; }
       .detail-scroll, .chat-scroll { height: 100%; }
       .sheet { border-radius: 24px; bottom: 28px; }
@@ -3507,6 +3530,7 @@
     function switchTab(tab, options = {}) {
       tab = tab || "plaza";
       if (!$("#" + tab + "Page")) tab = "plaza";
+      const shouldResetScroll = !options.skipScrollReset && !options.skipRemember;
       activeTab = tab;
       $$(".tab-page").forEach(page => page.classList.remove("active"));
       $("#" + tab + "Page").classList.add("active");
@@ -3516,6 +3540,11 @@
         loadRemoteConversations().then(renderMessages).catch(error => showToast(error.message || "读取远程会话失败。"));
       }
       renderAll();
+      if (shouldResetScroll) {
+        resetMainScroll(tab);
+        requestAnimationFrame(() => resetMainScroll(tab));
+        setTimeout(() => resetMainScroll(tab), 60);
+      }
     }
 
     function restoreSavedView(options = {}) {
@@ -3977,6 +4006,18 @@
       if (typeof window.scrollTo === "function") window.scrollTo({ top: 0, left: 0, behavior: "auto" });
     }
 
+    function resetMainScroll(tab = activeTab) {
+      const root = document.scrollingElement || document.documentElement;
+      const activePage = $("#" + (tab || "plaza") + "Page");
+      [root, document.documentElement, document.body, dom.appScreen, activePage].forEach(el => {
+        if (!el) return;
+        el.scrollTop = 0;
+        el.scrollLeft = 0;
+        if (typeof el.scrollTo === "function") el.scrollTo({ top: 0, left: 0, behavior: "auto" });
+      });
+      if (typeof window.scrollTo === "function") window.scrollTo({ top: 0, left: 0, behavior: "auto" });
+    }
+
     function closePostDetail() {
       dom.detailPage.classList.remove("open");
       if (uiState().detailPostId) rememberUi({ detailPostId: null });
@@ -4388,13 +4429,13 @@
           <img class="avatar-lg" src="${user.avatar}" alt="${escapeHtml(user.name)}">
           <div>
             <h3>${escapeHtml(user.name)}</h3>
-            <p class="muted">${escapeHtml(publicProfileText(user) || "这个同学暂未公开更多资料")}</p>
+            <p class="muted">${escapeHtml(publicProfileText(user) || "TA 暂未公开更多资料")}</p>
           </div>
         </div>
         <div class="info-grid">${info.length ? info.join("") : `<span class="info-pill">暂无公开资料</span>`}</div>
         ${bio}
         <div class="section-title">公开帖子</div>
-        <div class="section-body">${publicPosts.length ? publicPosts.map(post => postCardHtml(post, true)).join("") : `<div class="empty">这个同学暂时没有公开帖子。</div>`}</div>
+        <div class="section-body">${publicPosts.length ? publicPosts.map(post => postCardHtml(post, true)).join("") : `<div class="empty">TA 暂时没有公开帖子。</div>`}</div>
       `;
       dom.peerProfileContent.onclick = event => {
         const card = event.target.closest("[data-open-post]");
