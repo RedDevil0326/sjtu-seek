@@ -892,13 +892,55 @@
 
     .chat-peer {
       display: grid;
+      flex: 1;
+      min-width: 0;
       line-height: 1.15;
     }
-    .chat-peer span {
+    .chat-peer strong,
+    .chat-peer > span {
+      overflow: hidden;
+      white-space: nowrap;
+      text-overflow: ellipsis;
+    }
+    .chat-peer strong {
+      color: var(--ink);
+      font-size: 16px;
+      font-weight: 1000;
+    }
+    .chat-peer > span {
       color: var(--muted);
       font-size: 12px;
       font-weight: 500;
       margin-top: 3px;
+    }
+    .name-with-remark > span:first-child {
+      color: var(--ink);
+      font-weight: 1000;
+    }
+    .name-with-remark {
+      display: inline-flex;
+      align-items: baseline;
+      gap: 2px;
+      min-width: 0;
+      max-width: 100%;
+    }
+    .name-with-remark .remark-inline {
+      color: #9aa0ad;
+      font-size: .82em;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+    .chat-note-btn {
+      flex: 0 0 auto;
+      min-height: 34px;
+      padding: 0 12px;
+      border: 1px solid rgba(176, 31, 46, .14);
+      border-radius: 999px;
+      background: #fff7f8;
+      color: var(--red);
+      font-size: 12px;
+      font-weight: 900;
+      line-height: 1;
     }
     .chat-scroll {
       padding: 84px 18px 178px;
@@ -933,11 +975,62 @@
       border-color: var(--red);
       border-radius: 18px 18px 6px 18px;
     }
+    .bubble.system-bubble {
+      display: grid;
+      gap: 8px;
+    }
+    .bubble.system-bubble .system-chip {
+      width: fit-content;
+      padding: 2px 8px;
+      border-radius: 999px;
+      background: rgba(176, 31, 46, .1);
+      color: var(--red);
+      font-size: 11px;
+      font-weight: 900;
+      letter-spacing: .02em;
+    }
+    .bubble-row.me .bubble.system-bubble .system-chip {
+      background: rgba(255, 255, 255, .2);
+      color: #fff;
+    }
+    .bubble.system-bubble.cancelled {
+      background: #fff7f8;
+      color: var(--ink);
+      border-color: rgba(176, 31, 46, .12);
+    }
+    .bubble-row.me .bubble.system-bubble.cancelled {
+      background: #fff0f2;
+      color: var(--red);
+      border-color: rgba(176, 31, 46, .16);
+    }
+    .bubble.system-bubble.cancelled .system-chip {
+      background: rgba(176, 31, 46, .12);
+      color: var(--red);
+    }
+    .bubble-row.me .bubble.system-bubble.cancelled .system-chip {
+      background: rgba(176, 31, 46, .1);
+      color: var(--red);
+    }
     .bubble.image-bubble,
     .bubble.file-bubble {
       color: var(--ink);
       background: #fff;
       border-color: var(--line);
+    }
+    .bubble-row.me .bubble.image-bubble {
+      padding: 0;
+      color: inherit;
+      background: transparent;
+      border: 0;
+      box-shadow: none;
+      border-radius: 0;
+    }
+    .bubble-row:not(.me) .bubble.image-bubble {
+      padding: 0;
+      background: transparent;
+      border: 0;
+      box-shadow: none;
+      border-radius: 0;
     }
     .post-inline-link {
       display: inline;
@@ -960,6 +1053,7 @@
       max-height: 260px;
       object-fit: cover;
       border-radius: 12px;
+      box-shadow: 0 10px 24px rgba(32, 33, 42, .08);
       cursor: zoom-in;
     }
     .image-viewer {
@@ -1760,6 +1854,7 @@
           <strong id="chatName"></strong>
           <span id="chatSubtitle">校园互助私信</span>
         </div>
+        <button id="chatRemarkBtn" class="chat-note-btn" type="button">备注</button>
       </div>
       <div id="chatMessages" class="chat-scroll"></div>
       <div class="chat-input">
@@ -2415,6 +2510,7 @@
       chatAvatar: $("#chatAvatar"),
       chatPeerInfo: $("#chatPeerInfo"),
       chatName: $("#chatName"),
+      chatRemarkBtn: $("#chatRemarkBtn"),
       chatMessages: $("#chatMessages"),
       chatInput: $("#chatInput"),
       sendChatBtn: $("#sendChatBtn"),
@@ -2481,6 +2577,7 @@
         college: "",
         hobbies: "",
         bio: "",
+        contactRemarks: {},
         privacy: {
           gender: "public",
           age: "private",
@@ -2752,6 +2849,37 @@
     function me() { return state.users.find(u => u.id === state.currentUser) || state.users[0]; }
     function userById(id) { return state.users.find(u => u.id === id) || null; }
     function contacts() { return state.users.filter(u => u.id !== state.currentUser); }
+    function contactRemarksMap(user = me()) {
+      const remarks = user?.profile?.contactRemarks;
+      return remarks && typeof remarks === "object" && !Array.isArray(remarks) ? remarks : {};
+    }
+
+    function getContactRemark(userId) {
+      return String(contactRemarksMap(me())[userId] || "").trim();
+    }
+
+    function displayUserName(userOrId) {
+      const user = typeof userOrId === "string" ? userById(userOrId) : userOrId;
+      if (!user) return "未知同学";
+      return user.name || "未命名同学";
+    }
+
+    function displayUserNameWithRemark(userOrId) {
+      const user = typeof userOrId === "string" ? userById(userOrId) : userOrId;
+      if (!user) return "未知同学";
+      const baseName = escapeHtml(user.name || "未命名同学");
+      const remark = user.id && user.id !== state.currentUser ? getContactRemark(user.id) : "";
+      if (!remark) return baseName;
+      return `<span class="name-with-remark"><span>${baseName}</span><span class="remark-inline">（${escapeHtml(remark)}）</span></span>`;
+    }
+
+    function contactMetaText(user) {
+      if (!user) return "SJTU Seek 用户";
+      const parts = [];
+      const profileText = publicProfileText(user);
+      if (profileText) parts.push(profileText);
+      return parts.join(" · ") || "SJTU Seek 用户";
+    }
 
     function normalizeCampus(zone) {
       const map = { "东区": "闵行校区", "西区": "徐汇校区", "东区生活区": "闵行校区", "西区生活区": "徐汇校区" };
@@ -2944,6 +3072,7 @@
       return {
         ...defaultProfile(),
         ...(profile || {}),
+        contactRemarks: (profile && profile.contactRemarks && typeof profile.contactRemarks === "object" && !Array.isArray(profile.contactRemarks)) ? profile.contactRemarks : {},
         privacy: {
           ...defaultProfile().privacy,
           ...((profile && profile.privacy) || {})
@@ -3095,6 +3224,7 @@
         type: row.type || "text",
         text: parsed.text,
         postRef: parsed.postRef,
+        systemTag: parsed.systemTag,
         name: row.file_name || "",
         size: row.file_size || 0,
         data: row.file_url || "",
@@ -3106,21 +3236,43 @@
 
     function parseMessageContent(content = "") {
       const text = String(content || "");
-      if (!text.startsWith("__SJTU_SEEK_POST__:")) return { text, postRef: null };
+      if (text.startsWith("__SJTU_SEEK_META__:")) {
+        try {
+          const data = JSON.parse(text.slice("__SJTU_SEEK_META__:".length));
+          return {
+            text: data.text || "",
+            postRef: data.postId ? { id: data.postId, title: data.title || "相关帖子" } : null,
+            systemTag: data.systemTag || null
+          };
+        } catch {
+          return { text, postRef: null, systemTag: null };
+        }
+      }
+      if (!text.startsWith("__SJTU_SEEK_POST__:")) return { text, postRef: null, systemTag: null };
       try {
         const data = JSON.parse(text.slice("__SJTU_SEEK_POST__:".length));
         return {
           text: data.text || "",
-          postRef: data.postId ? { id: data.postId, title: data.title || "相关帖子" } : null
+          postRef: data.postId ? { id: data.postId, title: data.title || "相关帖子" } : null,
+          systemTag: null
         };
       } catch {
-        return { text, postRef: null };
+        return { text, postRef: null, systemTag: null };
       }
     }
 
     function encodePostMessage(text, post) {
       if (!post) return text;
       return `__SJTU_SEEK_POST__:${JSON.stringify({ text, postId: post.id, title: post.title })}`;
+    }
+
+    function encodeMetaMessage(text, postRef = null, systemTag = "") {
+      return `__SJTU_SEEK_META__:${JSON.stringify({
+        text,
+        postId: postRef?.id || "",
+        title: postRef?.title || "",
+        systemTag: systemTag || ""
+      })}`;
     }
 
     async function requirePasswordLogin() {
@@ -3460,6 +3612,7 @@
       dom.messageList.onclick = handleMessageListClick;
       dom.messageSearchInput.oninput = renderMessages;
       dom.closeChat.onclick = closeChat;
+      dom.chatRemarkBtn.onclick = editActiveContactRemark;
       dom.sendChatBtn.onclick = sendChat;
       dom.chatInput.onkeydown = event => { if (event.key === "Enter") sendChat(); };
       dom.openChatAttach.onclick = () => dom.attachmentModal.classList.add("open");
@@ -3570,7 +3723,7 @@
         <label class="contact-check">
           <input type="checkbox" value="${user.id}" ${selected.includes(user.id) ? "checked" : ""}>
           <img class="avatar-sm" src="${user.avatar}" alt="">
-          ${escapeHtml(user.name)}
+          ${escapeHtml(displayUserName(user))}
         </label>
       `).join("");
     }
@@ -3943,12 +4096,13 @@
           save();
           renderAll();
           if (dom.detailPage.classList.contains("open")) renderDetail(post.id);
-          return showToast("已取消“我来”。");
+          await sendAutoRespondNotice(post.authorId, post, "respond-cancel");
+          return showToast("已取消“我来”，并通知对方。");
         }
         post.responders.push(state.currentUser);
         save();
         renderAll();
-        return openChatWith(post.authorId, `你好，我看到你发布的「${post.title}」，我可以来回应。`, post);
+        return openChatWith(post.authorId, `你好，我看到你发布的「${post.title}」，我可以来回应。`, post, { seedSystemTag: "respond-request" });
       }
       if (action === "fav") toggleArray(post.favorites, state.currentUser, "已加入我的收藏。", "已取消收藏。");
       if (action === "like") toggleArray(post.likes, state.currentUser, "点赞成功，热度提升。", "已取消点赞。");
@@ -4144,14 +4298,22 @@
       if (!other) return showToast("暂时找不到这位同学的资料。");
       activeChatUserId = userId;
       const chat = getChat(userId);
-      if (seedText && !chat.messages.some(m => m.text === seedText && (!postRef || m.postRef?.id === postRef.id))) {
-        chat.messages.push({ from: state.currentUser, type: "text", text: seedText, postRef: postRef ? { id: postRef.id, title: postRef.title } : null, at: Date.now() });
+      if (seedText && !chat.messages.some(m => m.text === seedText && m.systemTag === (options.seedSystemTag || null) && (!postRef || m.postRef?.id === postRef.id))) {
+        chat.messages.push({
+          from: state.currentUser,
+          type: "text",
+          text: seedText,
+          postRef: postRef ? { id: postRef.id, title: postRef.title } : null,
+          systemTag: options.seedSystemTag || null,
+          at: Date.now()
+        });
         chat.updatedAt = Date.now();
         save();
       }
       dom.chatAvatar.src = other.avatar;
-      dom.chatName.textContent = other.name;
+      dom.chatName.innerHTML = displayUserNameWithRemark(other);
       dom.chatSubtitle.textContent = publicProfileText(other) || "校园互助私信";
+      dom.chatRemarkBtn.textContent = getContactRemark(userId) ? "改备注" : "备注";
       if (messagesRealtimeChannel && supabaseApi()) {
         supabaseApi().removeChannel(messagesRealtimeChannel);
         messagesRealtimeChannel = null;
@@ -4164,10 +4326,10 @@
       if (!options.skipRemember) rememberUi({ tab: "messages", chatUserId: userId, detailPostId: null });
       markChatRead(chat);
       renderMessages();
-      if (!options.skipRemote) syncRemoteChat(userId, chat, seedText, postRef);
+      if (!options.skipRemote) syncRemoteChat(userId, chat, seedText, postRef, options.seedSystemTag || null);
     }
 
-    async function syncRemoteChat(userId, chat, seedText = "", postRef = null) {
+    async function syncRemoteChat(userId, chat, seedText = "", postRef = null, seedSystemTag = null) {
       if (!state.auth.loggedIn || !supabaseApi() || !isUuid(userId)) return;
       try {
         dom.chatSubtitle.textContent = "正在同步消息...";
@@ -4177,9 +4339,20 @@
         const rows = await supabaseApi().listMessages(conversation.id);
         if (activeChatUserId !== userId) return;
         chat.messages = rows.map(mapRemoteMessage);
-        if (seedText && !chat.messages.some(m => m.text === seedText && (!postRef || m.postRef?.id === postRef.id))) {
-          await supabaseApi().sendMessage(conversation.id, { type: "text", text: encodePostMessage(seedText, postRef) });
-          chat.messages.push({ from: state.currentUser, type: "text", text: seedText, postRef: postRef ? { id: postRef.id, title: postRef.title } : null, at: Date.now(), _remote: true });
+        if (seedText && !chat.messages.some(m => m.text === seedText && m.systemTag === seedSystemTag && (!postRef || m.postRef?.id === postRef.id))) {
+          await supabaseApi().sendMessage(conversation.id, {
+            type: "text",
+            text: seedSystemTag ? encodeMetaMessage(seedText, postRef ? { id: postRef.id, title: postRef.title } : null, seedSystemTag) : encodePostMessage(seedText, postRef)
+          });
+          chat.messages.push({
+            from: state.currentUser,
+            type: "text",
+            text: seedText,
+            postRef: postRef ? { id: postRef.id, title: postRef.title } : null,
+            systemTag: seedSystemTag,
+            at: Date.now(),
+            _remote: true
+          });
         }
         markChatRead(chat);
         messagesRealtimeChannel = supabaseApi().subscribeMessages(conversation.id, async () => {
@@ -4232,6 +4405,24 @@
       setTimeout(() => dom.chatMessages.scrollTop = dom.chatMessages.scrollHeight, 0);
     }
 
+    function messageContentHtml(msg) {
+      const text = msg.text || "";
+      if (!msg.postRef?.id) return escapeHtml(text);
+      const post = state.posts.find(item => item.id === msg.postRef.id);
+      const title = post?.title || msg.postRef.title || "相关帖子";
+      const escapedTitle = escapeHtml(title);
+      const linkedTitle = `<button class="post-inline-link" data-open-chat-post="${escapeHtml(msg.postRef.id)}">「${escapedTitle}」</button>`;
+      const escapedText = escapeHtml(text);
+      const titleWithQuotes = `「${escapedTitle}」`;
+      return escapedText.includes(titleWithQuotes) ? escapedText.replace(titleWithQuotes, linkedTitle) : `${escapedText} ${linkedTitle}`;
+    }
+
+    function systemMessageLabel(tag) {
+      if (tag === "respond-cancel") return "已取消";
+      if (tag === "respond-request") return "系统提醒";
+      return "系统消息";
+    }
+
     function messageBubbleHtml(msg) {
       const type = msg.type || "text";
       if (type === "image") {
@@ -4241,17 +4432,54 @@
       if (type === "file") {
         return `<div class="bubble file-bubble"><span class="file-icon">文</span><span class="file-meta"><strong>${escapeHtml(msg.name || "文件")}</strong><span>${msg.previewLost ? "本地预览已压缩" : formatFileSize(msg.size || 0)}</span></span></div>`;
       }
+      if (msg.systemTag) {
+        return `<div class="bubble system-bubble ${msg.systemTag === "respond-cancel" ? "cancelled" : ""}">
+          <span class="system-chip">${escapeHtml(systemMessageLabel(msg.systemTag))}</span>
+          <div>${messageContentHtml(msg)}</div>
+        </div>`;
+      }
       if (msg.postRef?.id) {
-        const post = state.posts.find(item => item.id === msg.postRef.id);
-        const title = post?.title || msg.postRef.title || "相关帖子";
-        const text = msg.text || `你好，我看到你发布的「${title}」，我可以来回应。`;
-        const escapedTitle = escapeHtml(title);
-        const linkedTitle = `<button class="post-inline-link" data-open-chat-post="${escapeHtml(msg.postRef.id)}">「${escapedTitle}」</button>`;
-        const escapedText = escapeHtml(text);
-        const titleWithQuotes = `「${escapedTitle}」`;
-        return `<div class="bubble">${escapedText.includes(titleWithQuotes) ? escapedText.replace(titleWithQuotes, linkedTitle) : `${escapedText} ${linkedTitle}`}</div>`;
+        return `<div class="bubble">${messageContentHtml(msg)}</div>`;
       }
       return `<div class="bubble">${escapeHtml(msg.text || "")}</div>`;
+    }
+
+    async function sendAutoRespondNotice(userId, post, systemTag) {
+      if (!userId || !post || userId === state.currentUser) return;
+      const chat = getChat(userId);
+      const message = {
+        from: state.currentUser,
+        type: "text",
+        text: systemTag === "respond-cancel" ? `我先取消对「${post.title}」的回应啦。` : `你好，我看到你发布的「${post.title}」，我可以来回应。`,
+        postRef: { id: post.id, title: post.title },
+        systemTag,
+        at: Date.now()
+      };
+      chat.messages.push(message);
+      chat.updatedAt = message.at;
+      save();
+      if (activeChatUserId === userId) {
+        renderChat();
+        markChatRead(chat);
+      }
+      renderMessages();
+      if (!state.auth.loggedIn || !supabaseApi() || !isUuid(userId)) return;
+      try {
+        const conversation = activeRemoteConversationId && activeChatUserId === userId
+          ? { id: activeRemoteConversationId }
+          : await supabaseApi().getOrCreateConversation(userId);
+        if (activeChatUserId === userId) activeRemoteConversationId = conversation.id;
+        const row = await supabaseApi().sendMessage(conversation.id, {
+          type: "text",
+          text: encodeMetaMessage(message.text, message.postRef, systemTag)
+        });
+        Object.assign(message, mapRemoteMessage(row));
+        save();
+        if (activeChatUserId === userId) renderChat();
+        renderMessages();
+      } catch (error) {
+        console.warn("SJTU Seek respond notice sync fallback", error);
+      }
     }
 
     function openImageViewer(src) {
@@ -4379,6 +4607,7 @@
         const other = userById(item.otherId);
         const last = item.chat.messages[item.chat.messages.length - 1];
         const text = [
+          getContactRemark(item.otherId),
           other?.name,
           publicProfileText(other),
           lastMessagePreview(last || {}),
@@ -4393,9 +4622,9 @@
         return `<article class="message-item ${unread ? "unread" : ""}" data-chat-user="${other.id}">
           <img class="avatar-md" src="${other.avatar}" alt="${escapeHtml(other.name)}">
           <div class="message-text">
-            <strong>${escapeHtml(other.name)}</strong>
+            <strong>${displayUserNameWithRemark(other)}</strong>
             <p>${escapeHtml(last ? lastMessagePreview(last) : "还没有消息")}</p>
-            <p>${escapeHtml(publicProfileText(other) || "SJTU Seek 用户")}</p>
+            <p>${escapeHtml(contactMetaText(other))}</p>
           </div>
           <span class="message-time">${timeAgo(chat.chat.updatedAt)}</span>
         </article>`;
@@ -4428,7 +4657,7 @@
         <div class="public-profile-head">
           <img class="avatar-lg" src="${user.avatar}" alt="${escapeHtml(user.name)}">
           <div>
-            <h3>${escapeHtml(user.name)}</h3>
+            <h3>${displayUserNameWithRemark(user)}</h3>
             <p class="muted">${escapeHtml(publicProfileText(user) || "TA 暂未公开更多资料")}</p>
           </div>
         </div>
@@ -4444,14 +4673,50 @@
           openPostDetail(card.dataset.openPost, true);
         }
       };
+      dom.peerProfileModal.dataset.userId = user.id;
       dom.peerProfileModal.classList.add("open");
     }
 
     function lastMessagePreview(msg) {
       const type = msg.type || "text";
+      if (msg.systemTag === "respond-request") return `【系统】回应了${msg.postRef?.title ? `「${msg.postRef.title}」` : "你的帖子"}`;
+      if (msg.systemTag === "respond-cancel") return `【系统】取消了${msg.postRef?.title ? `「${msg.postRef.title}」` : "这次回应"}`;
       if (type === "image") return "[图片]";
       if (type === "file") return `[文件] ${msg.name || ""}`;
       return msg.text || "";
+    }
+
+    async function editActiveContactRemark() {
+      if (!activeChatUserId) return;
+      const other = userById(activeChatUserId);
+      if (!other) return;
+      const currentRemark = getContactRemark(other.id);
+      const next = window.prompt(`给 ${other.name} 设置备注`, currentRemark);
+      if (next === null) return;
+      const cleaned = next.trim().slice(0, 24);
+      const current = me();
+      current.profile = normalizedProfileData(current.profile);
+      const nextRemarks = { ...contactRemarksMap(current) };
+      if (cleaned) nextRemarks[other.id] = cleaned;
+      else delete nextRemarks[other.id];
+      current.profile.contactRemarks = nextRemarks;
+      save();
+      dom.chatName.innerHTML = displayUserNameWithRemark(other);
+      dom.chatRemarkBtn.textContent = cleaned ? "改备注" : "备注";
+      renderMessages();
+      if (dom.peerProfileModal.classList.contains("open") && dom.peerProfileModal.dataset.userId === other.id) {
+        openPeerProfile(other.id);
+      }
+      if (state.auth.loggedIn && supabaseApi()) {
+        try {
+          await syncSupabaseProfile();
+        } catch (error) {
+          console.warn("SJTU Seek contact remark sync fallback", error);
+          showToast(cleaned ? "备注已保存在本机，云端稍后同步。" : "备注已在本机清除，云端稍后同步。");
+          return;
+        }
+      }
+      showToast(cleaned ? "备注已保存。" : "备注已清除。");
     }
 
     function handleMessageListClick(event) {
