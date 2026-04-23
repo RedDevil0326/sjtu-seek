@@ -24,6 +24,7 @@
     body {
       margin: 0;
       min-height: 100vh;
+      overflow-x: hidden;
       color: var(--ink);
       background:
         radial-gradient(circle at top right, rgba(176, 31, 46, .12), transparent 23rem),
@@ -37,7 +38,8 @@
     img { max-width: 100%; display: block; }
 
     .phone {
-      width: min(100vw, 520px);
+      width: 100%;
+      max-width: 520px;
       min-height: 100vh;
       margin: 0 auto;
       background: rgba(255, 255, 255, .76);
@@ -842,12 +844,16 @@
       line-height: 1.45;
     }
     .message-item {
-      display: flex;
+      display: grid;
+      grid-template-columns: 52px minmax(0, 1fr) max-content;
       gap: 12px;
       align-items: center;
       padding: 13px;
+      width: 100%;
+      min-width: 0;
       box-shadow: none;
       position: relative;
+      overflow: hidden;
       transition: transform .16s ease, box-shadow .16s ease;
     }
     .message-item:active { transform: scale(.99); }
@@ -861,11 +867,20 @@
       border-radius: 50%;
       background: var(--red);
     }
-    .message-text { min-width: 0; flex: 1; }
+    .message-text { min-width: 0; overflow: hidden; }
     .message-text strong { display: block; margin-bottom: 4px; font-size: 15px; }
     .message-text p { margin: 0; color: var(--muted); font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .message-text p + p { margin-top: 3px; font-size: 12px; color: #969ba6; }
-    .message-time { color: var(--muted); font-size: 12px; }
+    .message-time {
+      justify-self: end;
+      align-self: center;
+      max-width: 58px;
+      overflow: hidden;
+      color: var(--muted);
+      font-size: 12px;
+      white-space: nowrap;
+      text-overflow: ellipsis;
+    }
 
     .chat-peer {
       display: grid;
@@ -878,7 +893,7 @@
       margin-top: 3px;
     }
     .chat-scroll {
-      padding: 84px 18px 136px;
+      padding: 84px 18px 178px;
       background:
         radial-gradient(circle at top right, rgba(176, 31, 46, .08), transparent 18rem),
         #f7f8fb;
@@ -1012,21 +1027,21 @@
       right: 0;
       bottom: 0;
       display: grid;
-      gap: 9px;
-      padding: 12px 16px max(14px, env(safe-area-inset-bottom));
+      gap: 10px;
+      padding: 13px max(16px, env(safe-area-inset-right)) calc(max(18px, env(safe-area-inset-bottom)) + 8px) max(16px, env(safe-area-inset-left));
       background: rgba(255,255,255,.96);
       border-top: 1px solid var(--line);
       box-shadow: 0 -10px 28px rgba(32,33,42,.07);
     }
     .chat-tools {
       display: grid;
-      grid-template-columns: 42px 1fr 76px;
-      gap: 8px;
+      grid-template-columns: 46px minmax(0, 1fr) 84px;
+      gap: 10px;
       align-items: center;
     }
     .tool-btn {
-      width: 42px;
-      height: 42px;
+      width: 46px;
+      height: 46px;
       border: 1px solid var(--line);
       border-radius: 50%;
       color: var(--red);
@@ -1058,12 +1073,14 @@
       -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M14 2H7a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7z'/%3E%3Cpath d='M14 2v5h5'/%3E%3Cpath d='M9 13h6M9 17h6'/%3E%3C/svg%3E");
     }
     .chat-input input {
-      height: 44px;
+      height: 48px;
       border-radius: 999px;
       background: #f6f7fa;
+      min-width: 0;
     }
     .chat-input .primary {
-      min-height: 44px;
+      min-height: 48px;
+      padding-inline: 16px;
     }
     .chat-attachment-preview {
       display: none;
@@ -1332,6 +1349,36 @@
       transition: .22s ease;
     }
     .toast.show { opacity: 1; transform: translate(-50%, 0); }
+
+    @media (max-width: 420px) {
+      .message-list { gap: 9px; }
+      .message-item {
+        grid-template-columns: 48px minmax(0, 1fr) max-content;
+        gap: 10px;
+        padding: 12px;
+      }
+      .message-item .avatar-md {
+        width: 48px;
+        height: 48px;
+      }
+      .message-text strong { font-size: 14px; }
+      .message-time { max-width: 48px; font-size: 11px; }
+      .chat-scroll { padding-inline: 14px; padding-bottom: 172px; }
+      .chat-input {
+        padding-inline: 14px;
+      }
+      .chat-tools {
+        grid-template-columns: 44px minmax(0, 1fr) 78px;
+        gap: 8px;
+      }
+      .tool-btn {
+        width: 44px;
+        height: 44px;
+      }
+      .chat-input .primary {
+        padding-inline: 12px;
+      }
+    }
 
     @media (min-width: 720px) {
       body { padding: 28px 0; }
@@ -2606,7 +2653,9 @@
         return normalized;
       });
       merged.posts = merged.posts || base.posts;
-      merged.chats = (merged.chats || base.chats).filter(chat => Array.isArray(chat.participants) && chat.participants.length === 2);
+      merged.chats = (merged.chats || base.chats)
+        .filter(chat => Array.isArray(chat.participants) && chat.participants.length === 2)
+        .map(chat => ({ ...chat, readAt: chat.readAt || {} }));
       merged.history = merged.history || [];
       merged.searchStats = sanitizeSearchStats(merged.searchStats || base.searchStats);
       merged.auth = { ...base.auth, ...(merged.auth || {}) };
@@ -3902,6 +3951,7 @@
       const post = state.posts.find(p => p.id === postId);
       if (!post || !canSee(post)) return showToast("这条帖子暂时不可见。");
       if (!options.skipRemember) rememberUi({ tab: activeTab || "plaza", detailPostId: postId, chatUserId: null });
+      resetDetailScroll();
       if (countView) {
         post.views = (post.views || 0) + 1;
         state.history = [postId, ...state.history.filter(id => id !== postId)].slice(0, 60);
@@ -3911,6 +3961,20 @@
       renderDetail(postId);
       dom.detailPage.classList.add("open");
       renderAll();
+      resetDetailScroll();
+      requestAnimationFrame(resetDetailScroll);
+      setTimeout(resetDetailScroll, 80);
+    }
+
+    function resetDetailScroll() {
+      const root = document.scrollingElement || document.documentElement;
+      [root, document.documentElement, document.body, dom.detailContent, dom.detailPage, dom.appScreen].forEach(el => {
+        if (!el) return;
+        el.scrollTop = 0;
+        el.scrollLeft = 0;
+        if (typeof el.scrollTo === "function") el.scrollTo({ top: 0, left: 0, behavior: "auto" });
+      });
+      if (typeof window.scrollTo === "function") window.scrollTo({ top: 0, left: 0, behavior: "auto" });
     }
 
     function closePostDetail() {
@@ -4004,15 +4068,31 @@
 
     function chatIdFor(userId) { return [state.currentUser, userId].sort().join("-"); }
 
+    function chatReadAt(chat) {
+      return Number(chat?.readAt?.[state.currentUser] || 0);
+    }
+
+    function hasUnreadChat(chat) {
+      const last = chat?.messages?.[chat.messages.length - 1];
+      return !!(last && last.from !== state.currentUser && Number(last.at || 0) > chatReadAt(chat));
+    }
+
+    function markChatRead(chat) {
+      if (!chat) return;
+      chat.readAt = { ...(chat.readAt || {}), [state.currentUser]: Date.now() };
+      save();
+    }
+
     function getChat(userId) {
       const id = chatIdFor(userId);
       let chat = state.chats.find(c => c.id === id || (Array.isArray(c.participants) && c.participants.includes(state.currentUser) && c.participants.includes(userId)));
       if (!chat) {
-        chat = { id, participants: [state.currentUser, userId], updatedAt: Date.now(), messages: [] };
+        chat = { id, participants: [state.currentUser, userId], updatedAt: Date.now(), messages: [], readAt: {} };
         state.chats.push(chat);
       } else {
         chat.id = id;
         chat.participants = [state.currentUser, userId];
+        chat.readAt = chat.readAt || {};
       }
       return chat;
     }
@@ -4041,6 +4121,8 @@
       dom.appScreen.classList.add("chat-open");
       switchTab("messages", { skipRemember: true, skipRemoteLoad: !!options.skipRemote });
       if (!options.skipRemember) rememberUi({ tab: "messages", chatUserId: userId, detailPostId: null });
+      markChatRead(chat);
+      renderMessages();
       if (!options.skipRemote) syncRemoteChat(userId, chat, seedText, postRef);
     }
 
@@ -4058,9 +4140,11 @@
           await supabaseApi().sendMessage(conversation.id, { type: "text", text: encodePostMessage(seedText, postRef) });
           chat.messages.push({ from: state.currentUser, type: "text", text: seedText, postRef: postRef ? { id: postRef.id, title: postRef.title } : null, at: Date.now(), _remote: true });
         }
+        markChatRead(chat);
         messagesRealtimeChannel = supabaseApi().subscribeMessages(conversation.id, async () => {
           const latest = await supabaseApi().listMessages(conversation.id);
           chat.messages = latest.map(mapRemoteMessage);
+          if (activeChatUserId === userId) markChatRead(chat);
           save();
           renderChat();
           renderMessages();
@@ -4264,7 +4348,7 @@
       dom.messageList.innerHTML = `<div class="message-note"><span>${keyword ? "匹配会话" : "私信会话"}</span><strong>${chats.length}</strong></div>` + (chats.length ? chats.map(chat => {
         const other = userById(chat.otherId);
         const last = chat.chat.messages[chat.chat.messages.length - 1];
-        const unread = last && last.from !== state.currentUser;
+        const unread = hasUnreadChat(chat.chat);
         return `<article class="message-item ${unread ? "unread" : ""}" data-chat-user="${other.id}">
           <img class="avatar-md" src="${other.avatar}" alt="${escapeHtml(other.name)}">
           <div class="message-text">
