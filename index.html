@@ -640,7 +640,8 @@
       backdrop-filter: blur(14px);
       overflow: hidden;
     }
-    .app.chat-open .bottom-nav { display: none; }
+    .app.chat-open .bottom-nav,
+    .app.detail-open .bottom-nav { display: none; }
     .nav-btn {
       border: 0;
       border-radius: 16px;
@@ -779,11 +780,33 @@
       overflow: hidden;
     }
     .detail-page.open, .chat-page.open { display: block; }
+    .detail-page.open {
+      position: fixed;
+      left: 50%;
+      top: 0;
+      bottom: 0;
+      width: min(100vw, 520px);
+      height: 100vh;
+      height: 100dvh;
+      min-height: 0;
+      transform: translateX(-50%);
+      z-index: 70;
+      overscroll-behavior: contain;
+    }
     .detail-scroll, .chat-scroll {
       height: 100vh;
       max-height: 100%;
       overflow-y: auto;
       padding: 72px 16px 18px;
+      overscroll-behavior: contain;
+    }
+    .detail-page.open .detail-scroll {
+      height: 100vh;
+      height: 100dvh;
+      max-height: none;
+      min-height: 0;
+      background: var(--bg);
+      padding-bottom: calc(28px + env(safe-area-inset-bottom, 0px));
     }
     .subbar {
       position: absolute;
@@ -825,7 +848,7 @@
     }
     .back::before { transform: translate(-44%, -50%) rotate(45deg); }
     .back::after { transform: translate(-44%, -50%) rotate(-45deg); }
-    .detail-sheet { padding: 16px; box-shadow: none; }
+    .detail-sheet { padding: 16px; box-shadow: none; margin-bottom: 0; }
     .detail-sheet h2 { margin: 14px 0 10px; font-size: 22px; }
     .detail-body { line-height: 1.75; color: #3f444e; white-space: pre-wrap; }
     .detail-images { display: grid; gap: 8px; grid-template-columns: repeat(2, 1fr); margin: 12px 0; }
@@ -2963,6 +2986,18 @@
       return Math.floor(diff / day) + "天前";
     }
 
+    function postDetailTime(ts) {
+      const date = new Date(ts);
+      return date.toLocaleString("zh-CN", {
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit",
+        hour: "2-digit",
+        minute: "2-digit",
+        hour12: false
+      }).replace(/\//g, "-");
+    }
+
     function chatTimeLabel(ts) {
       const date = new Date(ts);
       const now = new Date();
@@ -4146,6 +4181,7 @@
       }
       renderDetail(postId);
       dom.detailPage.classList.add("open");
+      dom.appScreen.classList.add("detail-open");
       renderAll();
       resetDetailScroll();
       requestAnimationFrame(resetDetailScroll);
@@ -4177,6 +4213,7 @@
 
     function closePostDetail() {
       dom.detailPage.classList.remove("open");
+      dom.appScreen.classList.remove("detail-open");
       if (uiState().detailPostId) rememberUi({ detailPostId: null });
     }
 
@@ -4190,7 +4227,7 @@
         <article class="detail-sheet">
           <div class="author">
             <img class="avatar-md" src="${author.avatar}" alt="${escapeHtml(author.name)}">
-            <div><strong>${escapeHtml(author.name)}</strong><span>${timeAgo(post.createdAt)} · ${post.zone} · 浏览 ${post.views || 0}</span></div>
+            <div><strong>${escapeHtml(author.name)}</strong><span>${timeAgo(post.createdAt)} · 发布于 ${postDetailTime(post.createdAt)} · ${post.zone} · 浏览 ${post.views || 0}</span></div>
           </div>
           <h2>${escapeHtml(post.title)}</h2>
           <div class="post-tags">${post.tags.map(tag => `<span class="tag">#${escapeHtml(tag)}</span>`).join("")}</div>
@@ -4819,6 +4856,7 @@
       dom.setupScreen.classList.remove("active");
       dom.detailPage.classList.remove("open");
       dom.chatPage.classList.remove("open");
+      dom.appScreen.classList.remove("detail-open");
       dom.appScreen.classList.remove("chat-open");
       dom.profileModal.classList.remove("open");
       dom.composerModal.classList.remove("open");
